@@ -325,3 +325,4 @@ VERIFICATION COMPLETE: 35 / 35 TESTS PASSED!
 - **Device Lighting**: For indoor gates, ensure sufficient lighting or use the built-in torch toggle on supported devices.
 - **Offline Attendance**: Attendance is never silently queued offline; if connection drops, the app preserves the unsaved input and prompts staff clearly to retry when connection restores.
 - **Realtime Sync**: The dashboard uses a hybrid architecture with polling every 12 seconds alongside Supabase Realtime subscriptions, guaranteeing synchronization across all staff devices.
+

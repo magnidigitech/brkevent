@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Camera, CameraOff, AlertCircle, RefreshCw, Search } from 'lucide-react';
+import { Camera, CameraOff, AlertCircle, RefreshCw, Search, X } from 'lucide-react';
 import { parseWardQRCode } from '@/lib/qr/parser';
 import { WARDS_SEED_DATA } from '@/data/wardsSeed';
 
@@ -14,70 +14,98 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
   const [scannerActive, setScannerActive] = useState<boolean>(true);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [scannedUrlError, setScannedUrlError] = useState<string | null>(null);
-  const [manualWardInput, setManualWardInput] = useState<string>('');
   const [manualSearchQuery, setManualSearchQuery] = useState<string>('');
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
 
-  // Reference for Html5Qrcode instance
+  // References to handle Html5Qrcode lifecycle and prevent concurrent state transitions
   const scannerRef = useRef<any>(null);
-  const isScanningRef = useRef<boolean>(false);
+  const isTransitioningRef = useRef<boolean>(false);
+  const isMountedRef = useRef<boolean>(true);
   const qrRegionId = 'qr-reader-container';
 
+  // Stop scanner safely
   const stopScanner = useCallback(async () => {
-    if (scannerRef.current && isScanningRef.current) {
-      try {
+    if (!scannerRef.current) return;
+    if (isTransitioningRef.current) return;
+
+    try {
+      isTransitioningRef.current = true;
+      // Check if scanner is currently active before stopping
+      if (scannerRef.current.isScanning) {
         await scannerRef.current.stop();
-        isScanningRef.current = false;
-      } catch (err) {
-        console.warn('Error stopping scanner:', err);
       }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Suppress normal transition or abort warnings
+      if (!msg.includes('already under transition') && !msg.includes('not running') && !msg.includes('media was removed')) {
+        console.warn('Handled stopScanner warning:', err);
+      }
+    } finally {
+      isTransitioningRef.current = false;
     }
   }, []);
 
   const handleScanSuccess = useCallback((decodedText: string) => {
-    const parseResult = parseWardQRCode(decodedText, window.location.host);
+    const parseResult = parseWardQRCode(decodedText, typeof window !== 'undefined' ? window.location.host : undefined);
 
     if (!parseResult.valid) {
       setScannedUrlError(parseResult.error || 'Invalid QR code. Please scan an official ward invitation.');
-      // Keep scanner running so staff can scan another, but show clear warning
       return;
     }
 
     setScannedUrlError(null);
     if (parseResult.wardNumber) {
-      // Vibrate if mobile device supports it
+      // Gentle haptic feedback on mobile
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        navigator.vibrate([100, 50, 100]);
+        try {
+          navigator.vibrate([80, 40, 80]);
+        } catch {
+          // Ignore vibrate restrictions
+        }
       }
       onWardScanned(parseResult.wardNumber);
     }
   }, [onWardScanned]);
 
+  // Start scanner safely with transition protection
   const startScanner = useCallback(async () => {
+    if (!isMountedRef.current || isPaused) return;
+    if (isTransitioningRef.current) return;
+
     setCameraError(null);
     setScannedUrlError(null);
     setIsInitializing(true);
+    isTransitioningRef.current = true;
 
     try {
-      // Dynamically import html5-qrcode on client side only
       const { Html5Qrcode } = await import('html5-qrcode');
+
+      if (!isMountedRef.current) return;
+
+      // Verify DOM element exists
+      const containerEl = document.getElementById(qrRegionId);
+      if (!containerEl) {
+        isTransitioningRef.current = false;
+        setIsInitializing(false);
+        return;
+      }
 
       if (!scannerRef.current) {
         scannerRef.current = new Html5Qrcode(qrRegionId);
       }
 
-      if (isScanningRef.current) {
+      // If already scanning, stop first
+      if (scannerRef.current.isScanning) {
         await scannerRef.current.stop();
-        isScanningRef.current = false;
       }
 
       const config = {
         fps: 15,
-        qrbox: { width: 260, height: 260 },
+        qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
       };
 
-      // Prefer rear camera (environment)
+      // Start camera with rear camera preference
       await scannerRef.current.start(
         { facingMode: 'environment' },
         config,
@@ -85,38 +113,65 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
           handleScanSuccess(decodedText);
         },
         () => {
-          // Frame error (no QR in view), can be safely ignored
+          // Ignore periodic frame scan misses
         }
       );
 
-      isScanningRef.current = true;
-      setScannerActive(true);
-    } catch (err: unknown) {
-      console.error('Camera initialization error:', err);
-      let errMsg = 'Could not access the camera. Please check camera permissions in your browser settings.';
-      if (err instanceof Error) {
-        if (err.name === 'NotAllowedError' || err.message.includes('Permission')) {
-          errMsg = 'Camera permission was denied. Please allow camera access in your browser settings to scan invitations.';
-        } else if (err.name === 'NotFoundError') {
-          errMsg = 'No camera found on this device. Please use manual ward lookup below.';
-        }
+      if (isMountedRef.current) {
+        setScannerActive(true);
       }
-      setCameraError(errMsg);
-      setScannerActive(false);
-    } finally {
-      setIsInitializing(false);
-    }
-  }, [handleScanSuccess]);
+    } catch (err: unknown) {
+      const errObj = err instanceof Error ? err : new Error(String(err));
+      const msg = errObj.message || '';
 
-  // Pause or resume scanner based on prop `isPaused`
+      // Gracefully ignore AbortError when media element is removed during transition/unmount
+      if (
+        errObj.name === 'AbortError' ||
+        msg.includes('media was removed') ||
+        msg.includes('already under transition')
+      ) {
+        // Safe lifecycle transition, do not show error banner to staff
+        return;
+      }
+
+      console.warn('Handled camera start issue:', err);
+      let errMsg = 'Could not access the camera. Please check camera permissions in your browser settings.';
+      if (errObj.name === 'NotAllowedError' || msg.includes('Permission') || msg.includes('denied')) {
+        errMsg = 'Camera permission was denied. Please allow camera access in your browser to scan invitations.';
+      } else if (errObj.name === 'NotFoundError' || msg.includes('not found')) {
+        errMsg = 'No camera detected on this device. Please use manual ward search below.';
+      }
+
+      if (isMountedRef.current) {
+        setCameraError(errMsg);
+        setScannerActive(false);
+      }
+    } finally {
+      isTransitioningRef.current = false;
+      if (isMountedRef.current) {
+        setIsInitializing(false);
+      }
+    }
+  }, [handleScanSuccess, isPaused]);
+
+  // Synchronize scanner lifecycle with paused state and active toggle
   useEffect(() => {
+    isMountedRef.current = true;
+
     if (isPaused) {
       stopScanner();
-    } else if (scannerActive && !isScanningRef.current) {
-      startScanner();
+    } else if (scannerActive) {
+      // Small timeout allows DOM to fully settle before requesting video stream
+      const timer = setTimeout(() => {
+        if (isMountedRef.current && !isPaused) {
+          startScanner();
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
 
     return () => {
+      isMountedRef.current = false;
       stopScanner();
     };
   }, [isPaused, scannerActive, startScanner, stopScanner]);
@@ -127,7 +182,6 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
       setScannerActive(false);
     } else {
       setScannerActive(true);
-      await startScanner();
     }
   };
 
@@ -136,21 +190,22 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     onWardScanned(wardNumber);
   };
 
-  // Filter wards for manual search
-  const filteredWards = WARDS_SEED_DATA.filter((w) => {
-    const q = manualSearchQuery.toLowerCase().trim();
-    if (!q) return false;
+  // Live AJAX search filtering for manual lookup
+  const cleanQuery = manualSearchQuery.toLowerCase().trim();
+  const searchResults = WARDS_SEED_DATA.filter((w) => {
+    if (!cleanQuery) return false;
     return (
-      w.ward_number.toString() === q ||
-      w.candidate_name.toLowerCase().includes(q) ||
-      w.party.toLowerCase().includes(q)
+      w.ward_number.toString() === cleanQuery ||
+      `ward ${w.ward_number}`.includes(cleanQuery) ||
+      w.candidate_name.toLowerCase().includes(cleanQuery) ||
+      w.party.toLowerCase().includes(cleanQuery)
     );
-  }).slice(0, 8);
+  }).slice(0, 10);
 
   return (
-    <div className="w-full flex flex-col items-center">
-      {/* Scanner Container */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="w-full max-w-lg flex flex-col items-center gap-4">
+      {/* Scanner Card */}
+      <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         {/* Scanner Viewport Header */}
         <div className="bg-slate-900 px-4 py-3 flex items-center justify-between text-white">
           <div className="flex items-center gap-2">
@@ -160,7 +215,8 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
 
           <button
             onClick={toggleScanner}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+            disabled={isInitializing}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 ${
               scannerActive
                 ? 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30'
                 : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
@@ -185,25 +241,12 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
           {/* HTML5 QR Container */}
           <div
             id={qrRegionId}
-            className={`w-full max-w-[340px] aspect-square transition-opacity duration-300 ${
+            className={`w-full max-w-[320px] aspect-square transition-opacity duration-300 ${
               scannerActive && !cameraError ? 'opacity-100' : 'opacity-0 h-0 hidden'
             }`}
           />
 
-          {/* Loading or Stopped State */}
-          {!scannerActive && !cameraError && (
-            <div className="p-8 text-center text-slate-400 flex flex-col items-center gap-3">
-              <CameraOff className="w-12 h-12 text-slate-500" />
-              <p className="text-sm font-medium">Camera is paused.</p>
-              <button
-                onClick={toggleScanner}
-                className="px-4 py-2 bg-amber-500 text-slate-950 rounded-lg text-sm font-bold shadow hover:bg-amber-400 transition"
-              >
-                Turn On Camera
-              </button>
-            </div>
-          )}
-
+          {/* Loading State */}
           {isInitializing && (
             <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center text-white gap-2 z-10">
               <RefreshCw className="w-8 h-8 text-amber-400 animate-spin" />
@@ -211,14 +254,28 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
             </div>
           )}
 
-          {/* Camera Error Message */}
+          {/* Stopped State */}
+          {!scannerActive && !cameraError && (
+            <div className="p-8 text-center text-slate-400 flex flex-col items-center gap-3">
+              <CameraOff className="w-12 h-12 text-slate-500" />
+              <p className="text-sm font-medium">Camera is paused.</p>
+              <button
+                onClick={toggleScanner}
+                className="px-4 py-2 bg-amber-500 text-slate-950 rounded-xl text-sm font-bold shadow hover:bg-amber-400 transition"
+              >
+                Turn On Camera
+              </button>
+            </div>
+          )}
+
+          {/* Camera Permission / Error Message */}
           {cameraError && (
             <div className="p-6 text-center text-slate-300 flex flex-col items-center gap-3">
               <AlertCircle className="w-10 h-10 text-rose-400" />
-              <p className="text-sm text-rose-200">{cameraError}</p>
+              <p className="text-xs sm:text-sm text-rose-200">{cameraError}</p>
               <button
                 onClick={startScanner}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-semibold hover:bg-slate-700 transition"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-slate-700 transition"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>Retry Camera Permission</span>
@@ -227,7 +284,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
           )}
         </div>
 
-        {/* Scanned QR Validation Error Alert */}
+        {/* Scanned QR Validation Error Banner */}
         {scannedUrlError && (
           <div className="bg-rose-50 border-t border-b border-rose-200 p-4 flex items-start gap-3 text-rose-900">
             <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
@@ -241,79 +298,116 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
           </div>
         )}
 
-        {/* Scanner Instructions */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 text-center">
+        {/* Scanner Footnote */}
+        <div className="p-3 bg-slate-50 border-t border-slate-200 text-center">
           <p className="text-xs text-slate-600">
             Point camera at the printed QR code on the invitation card.
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Rear camera is prioritized. Scanning pauses automatically when an invitation is detected.
           </p>
         </div>
       </div>
 
-      {/* Manual Ward Fallback Lookup */}
-      <div className="w-full max-w-md mt-6 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-        <div className="flex items-center gap-2 text-slate-800 mb-2">
-          <Search className="w-5 h-5 text-amber-600" />
-          <h3 className="font-bold text-sm sm:text-base">Manual Ward Lookup</h3>
+      {/* AJAX Ward Search Card Style Fallback */}
+      <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 text-slate-900 font-bold text-sm sm:text-base">
+            <Search className="w-4 h-4 text-amber-600" />
+            <span>Instant Ward Search</span>
+          </div>
+          <span className="text-[11px] font-semibold text-slate-400">76 Wards</span>
         </div>
-        <p className="text-xs text-slate-500 mb-4">
-          If the printed QR code is damaged or camera access is unavailable, select or enter the ward number directly.
+
+        <p className="text-xs text-slate-500 mb-3">
+          Type a ward number (1–76), candidate name, or party to look up invitations instantly.
         </p>
 
-        {/* Quick Ward Number Dropdown & Input */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              placeholder="Search ward # or candidate..."
-              value={manualSearchQuery}
-              onChange={(e) => setManualSearchQuery(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-            />
-          </div>
-
-          <select
-            value={manualWardInput}
-            onChange={(e) => {
-              const val = e.target.value;
-              setManualWardInput(val);
-              if (val) handleManualSelect(parseInt(val, 10));
-            }}
-            className="w-36 px-3 py-2.5 text-sm font-semibold border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >
-            <option value="">Select Ward</option>
-            {WARDS_SEED_DATA.map((w) => (
-              <option key={w.ward_number} value={w.ward_number}>
-                Ward {w.ward_number} ({w.party})
-              </option>
-            ))}
-          </select>
+        {/* Search Input Box */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            placeholder="Type ward number or candidate name..."
+            value={manualSearchQuery}
+            onChange={(e) => setManualSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-9 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+          />
+          {manualSearchQuery && (
+            <button
+              onClick={() => setManualSearchQuery('')}
+              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        {/* Search Results Dropdown Preview */}
-        {filteredWards.length > 0 && (
-          <div className="mt-3 divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden">
-            {filteredWards.map((w) => (
-              <button
+        {/* Live Search Result Cards */}
+        {searchResults.length > 0 && (
+          <div className="mt-3 flex flex-col gap-2 max-h-64 overflow-y-auto">
+            {searchResults.map((w) => (
+              <div
                 key={w.ward_number}
-                type="button"
                 onClick={() => {
                   setManualSearchQuery('');
                   handleManualSelect(w.ward_number);
                 }}
-                className="w-full text-left px-3.5 py-2.5 text-sm flex items-center justify-between hover:bg-amber-50 transition"
+                className="p-3 bg-slate-50 hover:bg-amber-50/70 border border-slate-200 rounded-xl flex items-center justify-between cursor-pointer transition active:scale-[0.99]"
               >
-                <div>
-                  <span className="font-bold text-slate-900 mr-2">Ward {w.ward_number}</span>
-                  <span className="text-slate-700">{w.candidate_name}</span>
+                <div className="flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-black text-sm flex items-center justify-center">
+                    {w.ward_number}
+                  </span>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block leading-tight">
+                      {w.candidate_name}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Ward {w.ward_number} • Allowance: 5 people
+                    </span>
+                  </div>
                 </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                  {w.party}
-                </span>
-              </button>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      w.party === 'TDP'
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                        : w.party === 'JSP'
+                        ? 'bg-rose-100 text-rose-900 border border-rose-300'
+                        : 'bg-orange-100 text-orange-950 border border-orange-300'
+                    }`}
+                  >
+                    {w.party}
+                  </span>
+                  <span className="text-xs font-semibold text-amber-700 bg-white px-2 py-1 rounded-lg border border-slate-200">
+                    Select →
+                  </span>
+                </div>
+              </div>
             ))}
+          </div>
+        )}
+
+        {/* Quick Ward Grid for Direct Tap */}
+        {!cleanQuery && (
+          <div className="mt-3">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+              Quick Jump (Popular / Initial Wards)
+            </span>
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+              {[1, 2, 5, 6, 10, 18, 24, 33, 41, 42, 51, 64].map((num) => {
+                const w = WARDS_SEED_DATA.find((x) => x.ward_number === num);
+                return (
+                  <button
+                    key={num}
+                    onClick={() => handleManualSelect(num)}
+                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-100 text-center transition border border-slate-200/80 active:bg-amber-200"
+                  >
+                    <span className="font-bold text-xs text-slate-800 block">W-{num}</span>
+                    <span className="text-[9px] text-slate-500 uppercase">{w?.party}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

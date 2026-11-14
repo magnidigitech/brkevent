@@ -55,3 +55,4 @@ export async function GET() {
     return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
+

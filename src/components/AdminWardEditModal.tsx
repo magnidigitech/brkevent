@@ -328,3 +328,4 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
     </div>
   );
 }
+

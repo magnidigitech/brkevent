@@ -92,3 +92,4 @@ export function parseWardQRCode(rawScannedText: string, currentHost?: string): Q
     originalUrl: trimmed
   };
 }
+

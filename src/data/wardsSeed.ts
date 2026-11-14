@@ -83,3 +83,4 @@ export const WARDS_SEED_DATA: WardSeedItem[] = [
   { "ward_number": 75, "candidate_name": "Chereddy Naga Kranthi", "party": "TDP", "allowance": 5 },
   { "ward_number": 76, "candidate_name": "Ankam Malini", "party": "TDP", "allowance": 5 }
 ];
+

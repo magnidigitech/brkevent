@@ -102,3 +102,4 @@ export interface VoidBatchPayload {
   batch_id: string;
   reason: string;
 }
+

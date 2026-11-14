@@ -546,3 +546,4 @@ export function WardEntryCard({
     </div>
   );
 }
+

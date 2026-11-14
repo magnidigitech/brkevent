@@ -57,3 +57,4 @@ export function PartyBadge({ party, size = 'md' }: PartyBadgeProps) {
     </span>
   );
 }
+

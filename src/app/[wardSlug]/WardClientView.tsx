@@ -63,3 +63,4 @@ export function WardClientView({ wardNumber, isAdmin }: WardClientViewProps) {
     </div>
   );
 }
+

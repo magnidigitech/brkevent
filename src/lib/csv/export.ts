@@ -46,3 +46,4 @@ export function downloadCsv(filename: string, csvContent: string): void {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
