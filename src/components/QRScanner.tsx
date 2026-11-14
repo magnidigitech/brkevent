@@ -45,7 +45,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     }
   }, []);
 
-  const handleScanSuccess = useCallback((decodedText: string) => {
+  const handleScanSuccess = useCallback(async (decodedText: string) => {
     const parseResult = parseWardQRCode(decodedText, typeof window !== 'undefined' ? window.location.host : undefined);
 
     if (!parseResult.valid) {
@@ -54,6 +54,29 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     }
 
     setScannedUrlError(null);
+
+    // If dynamic redirect QR (e.g. Canva QR)
+    if (parseResult.isDynamicRedirect) {
+      try {
+        setIsInitializing(true);
+        const res = await fetch(`/api/qr/resolve?url=${encodeURIComponent(decodedText)}`);
+        const data = await res.json();
+        if (data.valid && data.wardNumber) {
+          if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            try { navigator.vibrate([80, 40, 80]); } catch {}
+          }
+          onWardScanned(data.wardNumber);
+        } else {
+          setScannedUrlError(data.message || 'Could not resolve Canva QR destination.');
+        }
+      } catch (err) {
+        setScannedUrlError('Failed to resolve dynamic Canva QR code.');
+      } finally {
+        setIsInitializing(false);
+      }
+      return;
+    }
+
     if (parseResult.wardNumber) {
       // Gentle haptic feedback on mobile
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {

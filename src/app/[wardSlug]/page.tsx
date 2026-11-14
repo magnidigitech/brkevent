@@ -1,11 +1,13 @@
 import React from 'react';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { WardClientView } from './WardClientView';
 
 interface PageProps {
   params: Promise<{ wardSlug: string }>;
 }
+
+export const dynamic = 'force-dynamic';
 
 export default async function WardInvitationPage({ params }: PageProps) {
   const { wardSlug } = await params;
@@ -32,31 +34,29 @@ export default async function WardInvitationPage({ params }: PageProps) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
-      // Must not expose guest details or permit unauthenticated data changes.
-      // Show login and return them to that ward after login.
-      redirect(`/login?returnUrl=/${wardSlug}`);
+    if (user) {
+      isAuthenticated = true;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      isAdmin = profile?.role === 'admin';
     }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    isAuthenticated = true;
-    isAdmin = profile?.role === 'admin';
   } else {
-    // Dev mode fallback check
-    isAuthenticated = true; // In dev mode without Supabase, allow testing
+    // Dev fallback mode allows testing
+    isAuthenticated = true;
+    isAdmin = true;
   }
 
+  // Do NOT redirect to /login! Preserve the simple URL /ward[n] directly!
   return (
     <WardClientView
       wardNumber={wardNumber}
       wardSlug={wardSlug}
+      initialAuthenticated={isAuthenticated}
       isAdmin={isAdmin}
     />
   );
 }
-

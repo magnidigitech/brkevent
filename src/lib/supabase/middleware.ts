@@ -40,8 +40,9 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isWardPath = /^\/ward([0-9]+)$/i.test(pathname);
-  const isProtectedPath = pathname.startsWith('/dashboard') || pathname.startsWith('/scanner') || isWardPath;
+  // Dashboard requires admin auth.
+  // Ward URLs (/ward1 .. /ward76) preserve their exact simple URL and handle inline staff verification
+  const isProtectedPath = pathname.startsWith('/dashboard');
 
   // If user is not authenticated and trying to access protected paths
   if (!user && isProtectedPath) {
