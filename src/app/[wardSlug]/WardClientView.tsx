@@ -37,8 +37,8 @@ export function WardClientView({
   const [editingWard, setEditingWard] = useState<WardWithStats | null>(null);
 
   // Inline login state
-  const [email, setEmail] = useState<string>('vivek@gmail.com');
-  const [password, setPassword] = useState<string>('SecureAdmin2026!');
+  const [email, setEmail] = useState<string>('vivek@bhashyamramakrishna.in');
+  const [password, setPassword] = useState<string>('Magni@3939');
   const [loginLoading, setLoginLoading] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -172,12 +172,12 @@ export function WardClientView({
 
   return (
     <div className="flex-1 py-8 px-4 sm:px-6 flex flex-col items-center justify-start">
-      <div className="w-full max-w-lg mb-4 text-center">
-        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+      <div className="w-full max-w-lg mb-6 text-center">
+        <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight">
           Ward {wardNumber} Invitation
         </h1>
-        <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
-          Official invitation link: event.bhashyamramakrishna.in/{wardSlug}
+        <p className="text-xs sm:text-sm text-neutral-500 mt-1 font-normal">
+          Official invitation: event.bhashyamramakrishna.in/{wardSlug}
         </p>
       </div>
 
@@ -191,18 +191,26 @@ export function WardClientView({
         />
       ) : (
         /* If logged out, render inline staff unlock without changing the URL */
-        <div className="w-full max-w-lg bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
-          {/* Card Header with Ward Info */}
-          <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+        <div className="w-full max-w-lg bg-white rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.06)] border border-black/[0.06] overflow-hidden">
+          {/* Card Header with Ward Info (Apple Style) */}
+          <div className="bg-white border-b border-black/[0.06] p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black text-lg">
+              <span
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-base border shadow-2xs ${
+                  wardSeed?.party === 'TDP'
+                    ? 'bg-[#FFF6CC] text-[#7A5B00] border-[#FFCC00]/40'
+                    : wardSeed?.party === 'JSP'
+                    ? 'bg-[#FFEBEA] text-[#D70015] border-[#FF3B30]/30'
+                    : 'bg-[#FFF1E5] text-[#C93400] border-[#FF9500]/30'
+                }`}
+              >
                 {wardNumber}
               </span>
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                <span className="text-xs text-neutral-400 font-medium block">
                   Official Event Invitation
                 </span>
-                <h2 className="text-base sm:text-lg font-bold text-white">
+                <h2 className="text-base sm:text-lg font-semibold text-neutral-900 tracking-tight">
                   {wardSeed?.candidate_name || `Ward ${wardNumber}`}
                 </h2>
               </div>
@@ -211,30 +219,30 @@ export function WardClientView({
             {wardSeed?.party && <PartyBadge party={wardSeed.party} size="sm" />}
           </div>
 
-          <div className="p-5 border-b border-slate-100 bg-amber-50/40 text-xs text-amber-950 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
+          <div className="p-4 border-b border-black/[0.06] bg-neutral-50/70 text-xs text-neutral-600 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              <strong>Ward {wardNumber}</strong> allows <strong>5 people total</strong>. Please unlock with staff credentials to record gate arrivals.
+              <strong className="text-neutral-900 font-semibold">Ward {wardNumber}</strong> allows <strong className="text-neutral-900 font-semibold">5 people total</strong>. Please unlock with staff credentials to record gate arrivals.
             </span>
           </div>
 
           {/* Biometric One-Tap Unlock if enabled on this device */}
           {savedBiometric && (
-            <div className="p-5 border-b border-slate-100 bg-slate-50 flex flex-col gap-2.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <div className="p-5 border-b border-black/[0.06] bg-neutral-50 flex flex-col gap-2.5">
+              <span className="text-xs font-medium text-neutral-600">
                 Fast Biometric Unlock
               </span>
               <button
                 type="button"
                 onClick={handleBiometricUnlock}
                 disabled={loginLoading}
-                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl shadow-xs transition flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
               >
                 {loginLoading ? (
-                  <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+                  <RefreshCw className="w-4 h-4 animate-spin text-neutral-300" />
                 ) : (
                   <>
-                    <Fingerprint className="w-5 h-5 text-amber-400" />
+                    <Fingerprint className="w-4 h-4 text-neutral-300" />
                     <span>Unlock with Face ID / Fingerprint</span>
                   </>
                 )}
@@ -243,41 +251,41 @@ export function WardClientView({
           )}
 
           {/* Inline Staff Sign-In Form */}
-          <form onSubmit={(e) => handleInlineLogin(e)} className="p-5 flex flex-col gap-3">
+          <form onSubmit={(e) => handleInlineLogin(e)} className="p-6 flex flex-col gap-4">
             {loginError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">
+              <div className="p-3 bg-rose-50 border border-rose-200/80 rounded-xl text-rose-800 text-xs">
                 {loginError}
               </div>
             )}
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+              <label className="block text-xs font-medium text-neutral-600 mb-1.5">
                 Staff Email
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                  className="w-full pl-10 pr-4 py-2.5 text-sm bg-neutral-50/80 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-neutral-900 outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+              <label className="block text-xs font-medium text-neutral-600 mb-1.5">
                 Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Lock className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                  className="w-full pl-10 pr-4 py-2.5 text-sm bg-neutral-50/80 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-neutral-900 outline-none"
                 />
               </div>
             </div>
@@ -285,10 +293,10 @@ export function WardClientView({
             <button
               type="submit"
               disabled={loginLoading}
-              className="mt-2 w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-xl shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="mt-2 w-full py-3 bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99]"
             >
               {loginLoading ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
+                <RefreshCw className="w-4 h-4 animate-spin text-neutral-300" />
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
@@ -296,29 +304,6 @@ export function WardClientView({
                 </>
               )}
             </button>
-
-            {/* Quick One-Tap Staff Sign In */}
-            <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">
-                Quick 1-Tap Staff Verification
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleInlineLogin(undefined, 'admin', 'admin@bhashyamramakrishna.in', 'SecureAdmin2026!')}
-                  className="py-2 px-3 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 transition text-center"
-                >
-                  Sign In as Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleInlineLogin(undefined, 'scanner', 'scanner1@bhashyamramakrishna.in', 'ScannerPass2026!')}
-                  className="py-2 px-3 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 transition text-center"
-                >
-                  Sign In as Scanner
-                </button>
-              </div>
-            </div>
           </form>
         </div>
       )}

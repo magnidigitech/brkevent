@@ -94,28 +94,28 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col my-8">
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+      <div className="w-full max-w-xl bg-white rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.2)] border border-black/[0.06] overflow-hidden flex flex-col my-8">
         {/* Header */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+        <div className="bg-white border-b border-black/[0.06] px-6 py-4 flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-              Admin Ward Directory Editor
+            <span className="text-xs text-neutral-500 font-medium block">
+              Ward Settings & Directory
             </span>
-            <h3 className="text-lg font-bold">Edit Ward {ward.ward_number} Details</h3>
+            <h3 className="text-lg font-semibold text-neutral-900 tracking-tight">Edit Ward {ward.ward_number} Details</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center text-neutral-600 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
         <form onSubmit={handleSave} className="p-6 flex flex-col gap-5 max-h-[80vh] overflow-y-auto">
           {errorMsg && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-center gap-2">
+            <div className="p-3 bg-rose-50 border border-rose-200/80 rounded-xl text-rose-800 text-xs flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -124,7 +124,7 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
           {/* Section: Principal Invitee & Party */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-medium text-neutral-600 mb-1.5">
                 Principal Invitee Name *
               </label>
               <input
@@ -132,18 +132,18 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
                 required
                 value={candidateName}
                 onChange={(e) => setCandidateName(e.target.value)}
-                className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3.5 py-2.5 bg-neutral-50/80 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-sm font-medium text-neutral-900 outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-medium text-neutral-600 mb-1.5">
                 Party Affiliation
               </label>
               <select
                 value={party}
                 onChange={(e) => setParty(e.target.value as PartyAffiliation)}
-                className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                className="w-full px-3.5 py-2.5 bg-neutral-50/80 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-sm font-medium text-neutral-900 outline-none"
               >
                 <option value="TDP">TDP (Telugu Desam Party)</option>
                 <option value="JSP">JSP (Janasena Party)</option>
@@ -155,8 +155,8 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
           {/* Phone & Allowance */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-neutral-600">
                   Phone Number
                 </label>
                 {phone && phone.trim().length >= 10 && (
@@ -177,32 +177,32 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
                 placeholder="10-digit number e.g. 9397605656"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3.5 py-2.5 bg-neutral-50/80 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-sm font-mono text-neutral-900 outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-medium text-neutral-600 mb-1.5">
                 Allowance
               </label>
               <input
                 type="text"
                 disabled
                 value="5 people TOTAL"
-                className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-600 font-bold"
+                className="w-full px-3.5 py-2.5 border border-neutral-200 rounded-xl text-sm bg-neutral-100 text-neutral-500 font-medium"
               />
             </div>
           </div>
 
           {/* Accompanying Guests (up to 4) */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-            <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
+          <div className="p-4 bg-neutral-50/70 rounded-2xl border border-black/[0.04]">
+            <label className="block text-xs font-medium text-neutral-700 mb-2">
               Accompanying Guests (Optional, up to 4 guests)
             </label>
             <div className="space-y-2">
               {guests.map((g) => (
                 <div key={g.guest_number} className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500 w-16">
+                  <span className="text-xs font-medium text-neutral-400 w-16">
                     Guest {g.guest_number}:
                   </span>
                   <input
@@ -210,13 +210,13 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
                     placeholder={`Guest ${g.guest_number} Name (optional)`}
                     value={g.guest_name}
                     onChange={(e) => handleGuestChange(g.guest_number, e.target.value)}
-                    className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="flex-1 px-3 py-2 text-sm bg-white border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-900"
                   />
                   {g.guest_name && (
                     <button
                       type="button"
                       onClick={() => handleGuestChange(g.guest_number, '')}
-                      className="p-1.5 text-slate-400 hover:text-rose-500"
+                      className="p-1.5 text-neutral-400 hover:text-rose-500 transition-colors"
                       title="Clear guest"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -225,23 +225,23 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-slate-500 mt-2">
+            <p className="text-[11px] text-neutral-400 mt-2">
               Guest names are optional. Staff can record arrivals regardless of whether guest names are entered.
             </p>
           </div>
 
           {/* Food Planning Counts */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-3">
+          <div className="p-4 bg-neutral-50/70 rounded-2xl border border-black/[0.04] flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+              <label className="block text-xs font-medium text-neutral-800">
                 Food Planning Counts
               </label>
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+              <label className="flex items-center gap-2 text-xs font-medium text-neutral-700 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={foodConfirmed}
                   onChange={(e) => setFoodConfirmed(e.target.checked)}
-                  className="rounded text-amber-600 focus:ring-amber-500 h-4 w-4"
+                  className="rounded text-neutral-900 focus:ring-neutral-900/20 h-4 w-4 border-neutral-300"
                 />
                 <span>Mark Counts as Confirmed</span>
               </label>
@@ -249,7 +249,7 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                <label className="block text-[11px] font-medium text-neutral-600 mb-1">
                   Expected Veg
                 </label>
                 <input
@@ -258,12 +258,12 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
                   placeholder="Unset"
                   value={expectedVeg}
                   onChange={(e) => setExpectedVeg(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 bg-white border border-neutral-200 focus:border-neutral-900 rounded-xl text-sm font-medium outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                <label className="block text-[11px] font-medium text-neutral-600 mb-1">
                   Expected Non-Veg
                 </label>
                 <input
@@ -272,17 +272,17 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
                   placeholder="Unset"
                   value={expectedNonVeg}
                   onChange={(e) => setExpectedNonVeg(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 bg-white border border-neutral-200 focus:border-neutral-900 rounded-xl text-sm font-medium outline-none"
                 />
               </div>
             </div>
 
             {/* Food Mismatch Flag */}
             {isFoodMismatch && (
-              <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-900 text-xs flex items-start gap-2">
+              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-amber-900 text-xs flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold">Allowance Mismatch: </span>
+                  <span className="font-semibold">Allowance Mismatch: </span>
                   <span>
                     Total food count ({totalFood}) does not match the 5-person allowance. Values will be saved exactly as specified without silent changes.
                   </span>
@@ -290,32 +290,32 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
               </div>
             )}
 
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-neutral-400">
               Food counts are for catering planning only and do not affect actual arrival counts.
             </p>
           </div>
 
           {/* Admin Notes */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Admin Notes (Internal)
+            <label className="block text-xs font-medium text-neutral-600 mb-1.5">
+              Internal Notes
             </label>
             <textarea
               rows={2}
               placeholder="Special instructions, seating, or contact notes..."
               value={adminNotes}
               onChange={(e) => setAdminNotes(e.target.value)}
-              className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3.5 py-2.5 bg-neutral-50/80 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl text-sm font-normal outline-none transition-all text-neutral-900"
             />
           </div>
 
           {/* Actions */}
-          <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-black/[0.06] flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+              className="px-4 py-2 border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 font-medium text-xs sm:text-sm rounded-xl transition-colors"
             >
               Cancel
             </button>
@@ -323,11 +323,11 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-xl shadow transition flex items-center gap-2"
+              className="px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-2 active:scale-[0.99]"
             >
               {saving ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin text-neutral-300" />
                   <span>Saving...</span>
                 </>
               ) : (

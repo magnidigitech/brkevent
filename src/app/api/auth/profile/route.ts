@@ -33,12 +33,16 @@ export async function GET(request: NextRequest) {
 
     // Development fallback profile (allows testing in local environment when Supabase keys are pending)
     const roleCookie = request.cookies.get('brk_dev_role')?.value;
+    if (!roleCookie) {
+      return NextResponse.json({ authenticated: false, profile: null }, { status: 401 });
+    }
+
     const role = (roleCookie === 'scanner' ? 'scanner' : 'admin') as 'admin' | 'scanner';
 
     const devProfile: UserProfile = {
       id: 'dev-staff-1',
-      email: role === 'admin' ? 'admin@bhashyamramakrishna.in' : 'scanner1@bhashyamramakrishna.in',
-      full_name: role === 'admin' ? 'Event Administrator' : 'Gate Scanner 1',
+      email: role === 'admin' ? 'vivek@bhashyamramakrishna.in' : 'scanner1@bhashyamramakrishna.in',
+      full_name: role === 'admin' ? 'Venkata Vivek' : 'Gate Scanner 1',
       role,
     };
 

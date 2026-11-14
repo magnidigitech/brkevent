@@ -4,57 +4,60 @@ import { PartyAffiliation } from '@/types/database';
 interface PartyBadgeProps {
   party: PartyAffiliation | string;
   size?: 'sm' | 'md' | 'lg';
+  className?: string;
 }
 
-export function PartyBadge({ party, size = 'md' }: PartyBadgeProps) {
+export function PartyBadge({ party, size = 'md', className = '' }: PartyBadgeProps) {
   const normalizedParty = (party || '').toUpperCase();
 
   const sizeClasses = {
-    sm: 'text-xs px-2 py-0.5',
-    md: 'text-xs md:text-sm px-2.5 py-1',
-    lg: 'text-sm md:text-base px-3 py-1.5 font-semibold',
+    sm: 'text-[11px] px-2.5 py-0.5',
+    md: 'text-xs px-3 py-1',
+    lg: 'text-sm px-3.5 py-1.5 font-medium',
   }[size];
 
+  // TDP - Telugu Desam Party: Refined Warm Gold & Black
   if (normalizedParty === 'TDP') {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-amber-100 text-amber-900 border border-amber-300 ${sizeClasses}`}
+        className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-[#FFF6CC] text-[#7A5B00] border border-[#FFCC00]/40 shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${sizeClasses} ${className}`}
         aria-label="Party: TDP"
       >
-        <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" aria-hidden="true" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#1d1d1f] inline-block shrink-0" aria-hidden="true" />
         <span>TDP</span>
       </span>
     );
   }
 
+  // JSP - Janasena Party: Refined Crimson Red & White
   if (normalizedParty === 'JSP' || normalizedParty === 'JANASENA') {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-rose-100 text-rose-900 border border-rose-300 ${sizeClasses}`}
+        className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-[#FFEBEA] text-[#D70015] border border-[#FF3B30]/30 shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${sizeClasses} ${className}`}
         aria-label="Party: JSP (Janasena)"
       >
-        <span className="w-2 h-2 rounded-full bg-rose-600 inline-block" aria-hidden="true" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#FF3B30] inline-block shrink-0" aria-hidden="true" />
         <span>JSP</span>
       </span>
     );
   }
 
+  // BJP - Bharatiya Janata Party: Refined Saffron Orange & Crisp Text
   if (normalizedParty === 'BJP') {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-orange-100 text-orange-950 border border-orange-300 ${sizeClasses}`}
+        className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-[#FFF1E5] text-[#C93400] border border-[#FF9500]/30 shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${sizeClasses} ${className}`}
         aria-label="Party: BJP"
       >
-        <span className="w-2 h-2 rounded-full bg-orange-500 inline-block" aria-hidden="true" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#FF9500] inline-block shrink-0" aria-hidden="true" />
         <span>BJP</span>
       </span>
     );
   }
 
   return (
-    <span className={`inline-flex items-center gap-1 font-medium rounded-full bg-slate-100 text-slate-800 border border-slate-300 ${sizeClasses}`}>
+    <span className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-neutral-100 text-neutral-700 border border-neutral-200 ${sizeClasses} ${className}`}>
       <span>{party}</span>
     </span>
   );
 }
-

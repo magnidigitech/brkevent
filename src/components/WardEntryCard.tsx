@@ -260,18 +260,26 @@ export function WardEntryCard({
       )}
 
       {/* MAIN WARD INVITATION CARD */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        {/* Card Header: Ward Number & Party */}
-        <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black text-lg">
+      <div className="bg-white rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.06)] border border-black/[0.06] overflow-hidden">
+        {/* Card Header: Refined Apple aesthetic with party badge & squircle */}
+        <div className="px-6 py-5 flex items-center justify-between border-b border-black/[0.06] bg-white">
+          <div className="flex items-center gap-3.5">
+            <span
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-lg shadow-2xs border ${
+                ward.party === 'TDP'
+                  ? 'bg-[#FFF6CC] text-[#7A5B00] border-[#FFCC00]/40'
+                  : ward.party === 'JSP'
+                  ? 'bg-[#FFEBEA] text-[#D70015] border-[#FF3B30]/30'
+                  : 'bg-[#FFF1E5] text-[#C93400] border-[#FF9500]/30'
+              }`}
+            >
               {ward.ward_number}
             </span>
             <div>
-              <span className="text-xs uppercase tracking-wider text-slate-400 font-bold block">
+              <span className="text-xs text-neutral-500 font-medium block">
                 Official Invitation
               </span>
-              <h2 className="text-lg sm:text-xl font-bold text-white">
+              <h2 className="text-xl sm:text-2xl font-semibold text-neutral-900 tracking-tight leading-snug">
                 Ward {ward.ward_number}
               </h2>
             </div>
@@ -281,19 +289,19 @@ export function WardEntryCard({
         </div>
 
         {/* Candidate Details */}
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+        <div className="p-6 border-b border-black/[0.06] bg-neutral-50/50">
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-xs text-slate-500 font-medium">Principal Invitee / Candidate</span>
-              <h3 className="text-lg font-bold text-slate-900 mt-0.5">{ward.candidate_name}</h3>
+              <span className="text-xs text-neutral-500 font-medium">Principal Invitee / Candidate</span>
+              <h3 className="text-lg font-semibold text-neutral-900 mt-0.5 tracking-tight">{ward.candidate_name}</h3>
               {ward.phone && (
                 <div className="flex items-center gap-2 mt-2">
                   <a
                     href={`tel:${ward.phone}`}
-                    className="text-xs text-slate-700 hover:text-blue-600 font-bold font-mono flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200 transition"
+                    className="text-xs text-neutral-700 hover:text-blue-600 font-medium font-mono flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-black/[0.08] shadow-2xs transition-colors"
                     title="Click to Call"
                   >
-                    <Phone className="w-3 h-3 text-slate-400" />
+                    <Phone className="w-3 h-3 text-neutral-400" />
                     <span>{ward.phone}</span>
                   </a>
                   <WhatsAppButton ward={ward} variant="pill" />
@@ -304,7 +312,7 @@ export function WardEntryCard({
             {isAdmin && onEditWard && (
               <button
                 onClick={onEditWard}
-                className="text-xs font-semibold px-2.5 py-1 text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition"
+                className="text-xs font-medium px-3 py-1.5 text-neutral-700 bg-white border border-black/[0.08] rounded-xl hover:bg-neutral-50 shadow-2xs transition-colors"
               >
                 Edit Details
               </button>
@@ -313,15 +321,15 @@ export function WardEntryCard({
 
           {/* Accompanying Guests (if recorded) */}
           {ward.guests && ward.guests.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-slate-200/80">
-              <span className="text-xs font-semibold text-slate-600 block mb-1">
+            <div className="mt-3.5 pt-3 border-t border-black/[0.06]">
+              <span className="text-xs font-medium text-neutral-600 block mb-1.5">
                 Accompanying Guests ({ward.guests.length}):
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {ward.guests.map((g) => (
                   <span
                     key={g.guest_number}
-                    className="text-xs bg-slate-200/70 text-slate-800 px-2 py-0.5 rounded font-medium"
+                    className="text-xs bg-neutral-200/70 text-neutral-800 px-2.5 py-1 rounded-lg font-medium"
                   >
                     {g.guest_number}. {g.guest_name}
                   </span>
@@ -332,45 +340,55 @@ export function WardEntryCard({
         </div>
 
         {/* ATTENDANCE COUNTERS */}
-        <div className="p-5 border-b border-slate-100">
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center">
+        <div className="p-6 border-b border-black/[0.06]">
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-3 text-center">
             {/* Total Allowance */}
-            <div className="bg-slate-100 rounded-xl p-3">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+            <div className="bg-neutral-50 rounded-2xl p-4 border border-black/[0.04]">
+              <span className="text-xs font-medium text-neutral-500 block">
                 Allowance
               </span>
-              <span className="text-2xl font-black text-slate-800">{ward.allowance}</span>
-              <span className="text-[10px] text-slate-500 block">Total people</span>
+              <span className="text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900 mt-1 block">
+                {ward.allowance}
+              </span>
+              <span className="text-[11px] text-neutral-400 block mt-0.5">Total people</span>
             </div>
 
             {/* Previously Entered */}
-            <div className={`rounded-xl p-3 ${isOverAllowance ? 'bg-rose-100' : 'bg-emerald-50'}`}>
-              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+            <div className={`rounded-2xl p-4 border ${
+              isOverAllowance
+                ? 'bg-rose-50/70 border-rose-200/80'
+                : 'bg-emerald-50/70 border-emerald-200/80'
+            }`}>
+              <span className="text-xs font-medium text-neutral-600 block">
                 Entered
               </span>
               <span
-                className={`text-2xl font-black ${
+                className={`text-2xl sm:text-3xl font-semibold tracking-tight mt-1 block ${
                   isOverAllowance ? 'text-rose-700' : 'text-emerald-700'
                 }`}
               >
                 {ward.total_entered}
               </span>
-              <span className="text-[10px] text-slate-500 block">People entered</span>
+              <span className="text-[11px] text-neutral-500 block mt-0.5">People entered</span>
             </div>
 
             {/* Remaining or Excess */}
-            <div className={`rounded-xl p-3 ${isOverAllowance ? 'bg-rose-100' : 'bg-amber-50'}`}>
-              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+            <div className={`rounded-2xl p-4 border ${
+              isOverAllowance
+                ? 'bg-rose-50/70 border-rose-200/80'
+                : 'bg-amber-50/70 border-amber-200/80'
+            }`}>
+              <span className="text-xs font-medium text-neutral-600 block">
                 {isOverAllowance ? 'Excess' : 'Remaining'}
               </span>
               <span
-                className={`text-2xl font-black ${
-                  isOverAllowance ? 'text-rose-700' : 'text-amber-700'
+                className={`text-2xl sm:text-3xl font-semibold tracking-tight mt-1 block ${
+                  isOverAllowance ? 'text-rose-700' : 'text-amber-800'
                 }`}
               >
                 {isOverAllowance ? `+${ward.excess_count}` : ward.remaining_allowance}
               </span>
-              <span className="text-[10px] text-slate-500 block">
+              <span className="text-[11px] text-neutral-500 block mt-0.5">
                 {isOverAllowance ? 'Above allowance' : 'Slots left'}
               </span>
             </div>
@@ -378,7 +396,7 @@ export function WardEntryCard({
 
           {/* Status Message */}
           {isOverAllowance && (
-            <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-2 rounded-lg">
+            <div className="mt-3.5 flex items-center gap-2 text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200/80 px-3.5 py-2.5 rounded-xl">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>
                 Ward has already exceeded the 5-person allowance by {ward.excess_count} people.
@@ -387,7 +405,7 @@ export function WardEntryCard({
           )}
 
           {isAtOrExceeded && !isOverAllowance && (
-            <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg">
+            <div className="mt-3.5 flex items-center gap-2 text-xs font-medium text-amber-900 bg-amber-50 border border-amber-200/80 px-3.5 py-2.5 rounded-xl">
               <UserCheck className="w-4 h-4 text-amber-600 shrink-0" />
               <span>Ward has reached its exact 5-person allowance.</span>
             </div>
@@ -395,21 +413,21 @@ export function WardEntryCard({
         </div>
 
         {/* FOOD PLANNING INFORMATION */}
-        <div className="px-5 py-3.5 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-slate-700">
-            <Utensils className="w-4 h-4 text-slate-500" />
-            <span className="font-semibold">Food Planning:</span>
+        <div className="px-6 py-4 bg-neutral-50/80 border-b border-black/[0.06] flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 text-neutral-700">
+            <Utensils className="w-4 h-4 text-neutral-500" />
+            <span className="font-medium">Food Planning:</span>
             <span>
-              Veg: <strong>{ward.expected_veg !== null ? ward.expected_veg : 'Unset'}</strong>, Non-veg:{' '}
-              <strong>{ward.expected_non_veg !== null ? ward.expected_non_veg : 'Unset'}</strong>
+              Veg: <strong className="text-neutral-900 font-semibold">{ward.expected_veg !== null ? ward.expected_veg : 'Unset'}</strong>, Non-veg:{' '}
+              <strong className="text-neutral-900 font-semibold">{ward.expected_non_veg !== null ? ward.expected_non_veg : 'Unset'}</strong>
             </span>
           </div>
 
           <span
-            className={`px-2 py-0.5 rounded-full font-bold text-[10px] uppercase ${
+            className={`px-2.5 py-0.5 rounded-full font-medium text-[11px] ${
               ward.food_confirmed
-                ? 'bg-emerald-100 text-emerald-800'
-                : 'bg-amber-100 text-amber-800'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60'
+                : 'bg-amber-50 text-amber-800 border border-amber-200/60'
             }`}
           >
             {ward.food_confirmed ? 'Confirmed' : 'Unconfirmed'}
@@ -418,35 +436,35 @@ export function WardEntryCard({
 
         {/* PREVIOUS ARRIVAL BATCHES */}
         {ward.recent_batches && ward.recent_batches.length > 0 && (
-          <div className="p-5 border-b border-slate-100">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <div className="p-6 border-b border-black/[0.06]">
+            <h4 className="text-xs font-medium text-neutral-500 mb-2.5 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5" />
               <span>Previous Arrival Batches ({ward.recent_batches.length})</span>
             </h4>
 
-            <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
+            <div className="divide-y divide-black/[0.04] max-h-40 overflow-y-auto">
               {ward.recent_batches.map((batch) => (
-                <div key={batch.id} className="py-2 flex items-center justify-between text-xs">
+                <div key={batch.id} className="py-2.5 flex items-center justify-between text-xs">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-slate-800">
+                    <span className="font-medium text-neutral-900">
                       +{batch.batch_size} {batch.batch_size === 1 ? 'person' : 'people'}
                       {batch.excess_acknowledged && (
-                        <span className="ml-1.5 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded font-bold">
+                        <span className="ml-1.5 text-[10px] text-amber-800 bg-amber-50 border border-amber-200/60 px-1.5 py-0.2 rounded-md font-medium">
                           Excess Ack
                         </span>
                       )}
                     </span>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[11px] text-neutral-400 mt-0.5">
                       {formatInKolkataTime(batch.created_at)} • by {batch.recorded_by_name || 'Staff'}
                     </span>
                   </div>
 
                   {batch.is_voided ? (
-                    <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60 text-[10px] font-medium">
                       Voided: {batch.void_reason || 'Incorrect'}
                     </span>
                   ) : (
-                    <span className="text-emerald-600 font-semibold text-[11px]">Recorded</span>
+                    <span className="text-emerald-700 font-medium text-[11px]">Recorded</span>
                   )}
                 </div>
               ))}
@@ -455,11 +473,11 @@ export function WardEntryCard({
         )}
 
         {/* ARRIVAL ENTRY FORM */}
-        <div className="p-5 bg-white">
-          <label htmlFor="arrivingInput" className="block text-sm font-bold text-slate-900 mb-1">
+        <div className="p-6 bg-white">
+          <label htmlFor="arrivingInput" className="block text-sm font-semibold text-neutral-900 mb-1">
             People Arriving Now
           </label>
-          <p className="text-xs text-slate-500 mb-3">
+          <p className="text-xs text-neutral-500 mb-3.5 font-normal">
             Positive whole number only. Scanning alone does not mark arrivals.
           </p>
 
@@ -477,11 +495,11 @@ export function WardEntryCard({
                   setShowExcessWarning(false);
                   setSubmissionError(null);
                 }}
-                className="w-full text-center text-xl font-bold py-2.5 border-2 border-slate-300 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                className="w-full text-center text-xl font-semibold py-2.5 bg-neutral-50/80 focus:bg-white border border-neutral-300 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-neutral-900 outline-none"
               />
             </div>
 
-            {/* Quick Increment Buttons */}
+            {/* Quick Increment Buttons (Apple Segmented Style) */}
             <div className="flex gap-1.5">
               {[1, 2, 3, 4, 5].map((num) => (
                 <button
@@ -492,10 +510,10 @@ export function WardEntryCard({
                     setShowExcessWarning(false);
                     setSubmissionError(null);
                   }}
-                  className={`px-3 py-2 text-xs font-bold rounded-lg border transition ${
+                  className={`px-3 py-2 text-xs font-medium rounded-xl border transition-all active:scale-[0.98] ${
                     arrivingCount === num
-                      ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-sm'
-                      : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                      ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
+                      : 'bg-neutral-100 text-neutral-700 border-neutral-200/70 hover:bg-neutral-200/70'
                   }`}
                 >
                   +{num}
@@ -506,7 +524,7 @@ export function WardEntryCard({
 
           {/* Submission Error Banner */}
           {submissionError && !showExcessWarning && (
-            <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+            <div className="mt-3.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <span>{submissionError}</span>
             </div>
@@ -517,16 +535,16 @@ export function WardEntryCard({
             <button
               onClick={() => handleRecordArrival(false)}
               disabled={submitting}
-              className="mt-4 w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-base rounded-xl shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="mt-5 w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-sm sm:text-base rounded-xl shadow-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.99]"
             >
               {submitting ? (
                 <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin text-neutral-300" />
                   <span>Confirming Database Write...</span>
                 </>
               ) : (
                 <>
-                  <Users className="w-5 h-5" />
+                  <Users className="w-4 h-4" />
                   <span>Record {arrivingCount} {arrivingCount === 1 ? 'Arrival' : 'Arrivals'}</span>
                 </>
               )}
@@ -535,17 +553,17 @@ export function WardEntryCard({
 
           {/* EXCESS WARNING DIALOG / BANNER */}
           {showExcessWarning && excessWarningDetails && (
-            <div className="mt-4 bg-amber-50 border-2 border-amber-400 rounded-xl p-4 text-amber-950">
+            <div className="mt-4 bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 text-amber-950">
               <div className="flex items-start gap-2.5">
-                <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-bold text-sm sm:text-base text-amber-900">
+                  <h4 className="font-semibold text-sm text-amber-900">
                     Allowance Exceeded Warning
                   </h4>
-                  <p className="text-xs sm:text-sm text-amber-800 mt-1 font-medium">
+                  <p className="text-xs text-amber-800 mt-1 font-normal leading-relaxed">
                     This invitation allows 5 people including the principal invitee. This entry will bring attendance to{' '}
-                    <span className="font-black underline">{excessWarningDetails.proposedTotal}</span>, exceeding the allowance by{' '}
-                    <span className="font-black underline">{excessWarningDetails.excessBy}</span>.
+                    <span className="font-semibold underline">{excessWarningDetails.proposedTotal}</span>, exceeding the allowance by{' '}
+                    <span className="font-semibold underline">{excessWarningDetails.excessBy}</span>.
                   </p>
                 </div>
               </div>
@@ -558,7 +576,7 @@ export function WardEntryCard({
                     setSubmissionError(null);
                   }}
                   disabled={submitting}
-                  className="flex-1 py-2.5 bg-white border border-slate-300 text-slate-700 font-bold text-xs sm:text-sm rounded-lg hover:bg-slate-50 transition"
+                  className="flex-1 py-2.5 bg-white border border-neutral-300 text-neutral-700 font-medium text-xs sm:text-sm rounded-xl hover:bg-neutral-50 shadow-2xs transition-colors"
                 >
                   Go Back
                 </button>
@@ -567,12 +585,15 @@ export function WardEntryCard({
                   type="button"
                   onClick={() => handleRecordArrival(true)}
                   disabled={submitting}
-                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm rounded-lg shadow-sm transition flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs sm:text-sm rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
                 >
                   {submitting ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
-                    <span>Submit Anyway</span>
+                    <>
+                      <Users className="w-4 h-4" />
+                      <span>Confirm Excess Entry (+{excessWarningDetails.excessBy})</span>
+                    </>
                   )}
                 </button>
               </div>
@@ -580,18 +601,18 @@ export function WardEntryCard({
           )}
         </div>
 
-        {/* Card Footer: Back to Scanner */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        {/* Card Footer: Back to Scanner (Apple Style) */}
+        <div className="p-4 bg-neutral-50/70 border-t border-black/[0.06] flex items-center justify-between">
           <button
             onClick={onScanNext}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition"
+            className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-3.5 h-3.5" />
             <span>Scan Another Ward</span>
           </button>
 
-          <span className="text-[11px] text-slate-400">
-            Request ID: {currentRequestIdRef.current.substring(0, 8)}...
+          <span className="text-[11px] text-neutral-400 font-mono">
+            ID: {currentRequestIdRef.current.substring(0, 8)}
           </span>
         </div>
       </div>

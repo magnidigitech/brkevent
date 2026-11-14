@@ -212,51 +212,55 @@ function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-sm bg-white rounded-3xl shadow-xl border border-slate-200/90 overflow-hidden">
+    <div className="w-full max-w-sm bg-white rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.06)] border border-black/[0.06] overflow-hidden">
       {/* Header */}
-      <div className="p-8 pb-6 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-amber-500 text-slate-950 font-black text-2xl mx-auto flex items-center justify-center mb-4 shadow-sm">
-          BRK
+      <div className="p-8 pb-5 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-white mx-auto flex items-center justify-center mb-4 shadow-xs border border-black/[0.06] overflow-hidden p-1.5">
+          <img
+            src="/images/kutami-logo.jpg"
+            alt="Kutami Logo"
+            className="w-full h-full object-contain"
+          />
         </div>
-        <h1 className="text-xl font-black text-slate-900 tracking-tight">Staff Sign In</h1>
-        <p className="text-xs text-slate-500 mt-1">
+        <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight">Staff Sign In</h1>
+        <p className="text-xs text-neutral-500 mt-1 font-normal">
           Bhashyam Ramakrishna Event Operations
         </p>
       </div>
 
       {/* Return URL Notification */}
       {returnUrl !== '/scanner' && returnUrl !== '/dashboard' && (
-        <div className="mx-6 mb-4 px-3 py-2 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-900 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
-          <span>Redirecting to <strong>{returnUrl}</strong> after sign in.</span>
+        <div className="mx-6 mb-4 px-3.5 py-2.5 bg-neutral-50 border border-neutral-200/80 rounded-xl text-xs text-neutral-700 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>Redirecting to <strong className="font-semibold text-neutral-900">{returnUrl}</strong> after sign in.</span>
         </div>
       )}
 
       {/* Biometric One-Tap Unlock if already enrolled on this device */}
       {savedBiometric && (
-        <div className="mx-6 mb-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col gap-2.5">
+        <div className="mx-6 mb-4 p-3.5 rounded-2xl bg-neutral-50 border border-neutral-200/80 flex flex-col gap-2.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-slate-700 flex items-center gap-1.5">
-              <Fingerprint className="w-4 h-4 text-amber-600" />
+            <span className="font-medium text-neutral-700 flex items-center gap-1.5">
+              <Fingerprint className="w-4 h-4 text-neutral-900" />
               <span>Fast Biometric Unlock</span>
             </span>
-            <span className="text-[11px] text-slate-400 font-mono">{savedBiometric.email.split('@')[0]}</span>
+            <span className="text-[11px] text-neutral-400 font-mono">{savedBiometric.email.split('@')[0]}</span>
           </div>
 
           <button
             type="button"
             onClick={handleBiometricUnlock}
             disabled={biometricLoading}
-            className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 active:scale-98"
+            className="w-full py-2.5 px-4 bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
           >
             {biometricLoading ? (
               <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-neutral-300" />
                 <span>Verifying Biometric...</span>
               </>
             ) : (
               <>
-                <Fingerprint className="w-4 h-4 text-amber-400" />
+                <Fingerprint className="w-4 h-4 text-neutral-300" />
                 <span>Sign In with Face ID / Fingerprint</span>
               </>
             )}
@@ -266,48 +270,48 @@ function LoginForm() {
 
       {/* Error Banner */}
       {errorMsg && (
-        <div className="mx-6 mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-center gap-2">
+        <div className="mx-6 mb-4 p-3 bg-rose-50 border border-rose-200/80 rounded-xl text-rose-800 text-xs flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {/* Standard Form */}
-      <form onSubmit={handleSubmit} className="px-6 pb-6 flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="px-6 pb-7 flex flex-col gap-4">
         <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-medium text-neutral-600 mb-1.5">
             Email Address
           </label>
           <div className="relative">
-            <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
             <input
               type="email"
               required
               autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
+              className="w-full pl-10 pr-4 py-2.5 text-sm bg-neutral-50/80 hover:bg-neutral-50 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-neutral-900 outline-none"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-medium text-neutral-600 mb-1.5">
             Password
           </label>
           <div className="relative">
-            <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <Lock className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
             <input
               type={showPassword ? 'text' : 'password'}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-10 pr-10 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
+              className="w-full pl-10 pr-10 py-2.5 text-sm bg-neutral-50/80 hover:bg-neutral-50 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-neutral-900 outline-none"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5"
+              className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-600 p-0.5 transition-colors"
               title={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -317,24 +321,24 @@ function LoginForm() {
 
         {/* Biometric Option */}
         {biometricSupported && (
-          <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer pt-0.5">
+          <label className="flex items-center gap-2 text-xs text-neutral-600 cursor-pointer pt-0.5">
             <input
               type="checkbox"
               checked={enableBiometricOnLogin}
               onChange={(e) => setEnableBiometricOnLogin(e.target.checked)}
-              className="rounded text-amber-500 focus:ring-amber-500 h-4 w-4"
+              className="rounded text-neutral-900 focus:ring-neutral-900/20 h-4 w-4 border-neutral-300"
             />
-            <span className="font-medium">Enable Face ID / Fingerprint on this device</span>
+            <span className="font-normal">Enable Face ID / Fingerprint on this device</span>
           </label>
         )}
 
         <button
           type="submit"
           disabled={loading}
-          className="mt-2 w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-xl shadow-xs transition flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
+          className="mt-2 w-full py-3 bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99]"
         >
           {loading ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
+            <RefreshCw className="w-4 h-4 animate-spin text-neutral-300" />
           ) : (
             <>
               <LogIn className="w-4 h-4" />
@@ -343,7 +347,7 @@ function LoginForm() {
           )}
         </button>
 
-        <p className="text-[11px] text-slate-400 text-center mt-2">
+        <p className="text-[11px] text-neutral-400 text-center mt-2 font-normal">
           Authorized staff access only.
         </p>
       </form>

@@ -109,7 +109,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      return NextResponse.json({ success: true, user: data.user });
+      const response = NextResponse.json({ success: true, user: data.user });
+      response.cookies.set('brk_dev_role', 'admin', {
+        path: '/',
+        httpOnly: false,
+      });
+      return response;
     }
 
     // Local development fallback (when Supabase keys are not set)

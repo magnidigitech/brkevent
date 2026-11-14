@@ -45,9 +45,11 @@ export default async function WardInvitationPage({ params }: PageProps) {
       isAdmin = profile?.role === 'admin';
     }
   } else {
-    // Dev fallback mode allows testing
-    isAuthenticated = true;
-    isAdmin = true;
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    const roleCookie = cookieStore.get('brk_dev_role')?.value;
+    isAuthenticated = !!roleCookie;
+    isAdmin = roleCookie === 'admin';
   }
 
   // Do NOT redirect to /login! Preserve the simple URL /ward[n] directly!

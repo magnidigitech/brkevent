@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Header } from '@/components/Header';
+import { BottomNav } from '@/components/BottomNav';
 
 export const metadata: Metadata = {
   title: 'Bhashyam Ramakrishna Event Entry System',
@@ -37,9 +38,10 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body className="min-h-screen bg-slate-100 flex flex-col text-slate-900 antialiased selection:bg-amber-200">
+      <body className="min-h-screen bg-[#f5f5f7] flex flex-col text-[#1d1d1f] antialiased selection:bg-neutral-200">
         <Header />
-        <main className="flex-1 flex flex-col">{children}</main>
+        <main className="flex-1 flex flex-col pb-24 sm:pb-8">{children}</main>
+        <BottomNav />
       </body>
     </html>
   );
