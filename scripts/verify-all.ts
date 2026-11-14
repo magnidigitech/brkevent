@@ -205,7 +205,7 @@ async function runVerification() {
     const wardAfterVoid = await getWardByNumber(testWardNumber);
     assert(wardAfterVoid?.total_entered === 5, 'Ward attendance recalculated to 5 excluding voided batch');
     assert(
-      wardAfterVoid?.recent_batches.some((b) => b.id === batch3Confirmed.batch_id && b.is_voided),
+      Boolean(wardAfterVoid?.recent_batches?.some((b) => b.id === batch3Confirmed.batch_id && b.is_voided)),
       'Voided batch record is preserved in history with void reason'
     );
   }
