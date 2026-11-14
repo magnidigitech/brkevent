@@ -5,6 +5,7 @@
 
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Profiles table (Linked to Supabase auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -95,24 +96,24 @@ RETURNS BOOLEAN
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
-AS 80213
+AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.profiles
     WHERE id = auth.uid() AND role = 'admin'
   );
-80213;
+$$;
 
 CREATE OR REPLACE FUNCTION public.is_staff()
 RETURNS BOOLEAN
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
-AS 80213
+AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.profiles
     WHERE id = auth.uid() AND role IN ('admin', 'scanner')
   );
-80213;
+$$;
 
 -- RLS: profiles
 DROP POLICY IF EXISTS profiles_read_policy ON public.profiles;
@@ -173,7 +174,7 @@ CREATE OR REPLACE FUNCTION public.record_arrival(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS 80213
+AS $$
 DECLARE
     v_user_id UUID := auth.uid();
     v_ward RECORD;
@@ -322,7 +323,7 @@ BEGIN
         'message', 'Arrival recorded successfully.'
     );
 END;
-80213;
+$$;
 
 -- Function: void_arrival_batch (Admin-only voiding with reason and audit log)
 CREATE OR REPLACE FUNCTION public.void_arrival_batch(
@@ -332,7 +333,7 @@ CREATE OR REPLACE FUNCTION public.void_arrival_batch(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS 80213
+AS $$
 DECLARE
     v_user_id UUID := auth.uid();
     v_batch RECORD;
@@ -407,7 +408,7 @@ BEGIN
         'message', 'Arrival batch voided successfully.'
     );
 END;
-80213;
+$$;
 
 -- Seed Data: Insert all 76 Wards
 INSERT INTO public.wards (ward_number, candidate_name, party, allowance)
@@ -495,7 +496,7 @@ SET candidate_name = EXCLUDED.candidate_name,
 
 
 -- Enable Realtime for live updates across all staff devices
-DO 80227
+DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_publication_tables 
@@ -510,4 +511,4 @@ BEGIN
     ) THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.arrival_batches;
     END IF;
-END 80227;
+END $$;

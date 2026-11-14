@@ -2,6 +2,8 @@
 -- Replace 'admin@example.com' and 'your_secure_password' with the actual staff email and password.
 -- This can be executed in the Supabase SQL Editor.
 
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- 1. Create an Admin Account
 DO $$
 DECLARE
@@ -92,3 +94,4 @@ BEGIN
         WHERE email = user_email;
     END IF;
 END $$;
+
