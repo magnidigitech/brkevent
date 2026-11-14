@@ -29,6 +29,7 @@ import {
 import { WardWithStats, ArrivalBatch, DashboardSummary } from '@/types/database';
 import { PartyBadge } from '@/components/PartyBadge';
 import { AdminWardEditModal } from '@/components/AdminWardEditModal';
+import { WardEntryCard } from '@/components/WardEntryCard';
 import { formatInKolkataTime } from '@/lib/utils/date';
 
 export default function DashboardPage() {
@@ -54,6 +55,9 @@ export default function DashboardPage() {
   // Admin Ward Edit Modal State
   const [selectedWardForEdit, setSelectedWardForEdit] = useState<WardWithStats | null>(null);
 
+  // Instant Record Arrival Modal State (0ms open)
+  const [selectedWardForArrival, setSelectedWardForArrival] = useState<WardWithStats | null>(null);
+
   // Void Batch Modal State
   const [batchToVoid, setBatchToVoid] = useState<ArrivalBatch | null>(null);
   const [voidReason, setVoidReason] = useState<string>('');
@@ -63,26 +67,18 @@ export default function DashboardPage() {
   // Audit Logs State
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
-  // Load Dashboard Data
+  // Load Dashboard Data (Ultra-fast single query)
   const loadDashboardData = useCallback(async (isBackground: boolean = false) => {
     try {
       if (!isBackground) setRefreshing(true);
 
-      const [dashRes, wardsRes] = await Promise.all([
-        fetch('/api/dashboard'),
-        fetch('/api/wards'),
-      ]);
+      const res = await fetch('/api/dashboard');
+      const data = await res.json();
 
-      const dashData = await dashRes.json();
-      const wardsData = await wardsRes.json();
-
-      if (dashData.success) {
-        setSummary(dashData.summary);
-        setRecentBatches(dashData.recent_batches || []);
-      }
-
-      if (wardsData.success) {
-        setWards(wardsData.wards || []);
+      if (data.success) {
+        setSummary(data.summary);
+        setWards(data.wards || []);
+        setRecentBatches(data.recent_batches || []);
       }
 
       setLastRefreshed(new Date().toISOString());
@@ -602,13 +598,14 @@ export default function DashboardPage() {
 
                       {/* Card Action Buttons */}
                       <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                        <Link
-                          href={`/ward${w.ward_number}`}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedWardForArrival(w)}
                           className="flex-1 py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5"
                         >
                           <QrCode className="w-3.5 h-3.5" />
                           <span>Record Arrival</span>
-                        </Link>
+                        </button>
 
                         <button
                           onClick={() => setSelectedWardForEdit(w)}
@@ -720,12 +717,13 @@ export default function DashboardPage() {
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-1.5">
-                                <Link
-                                  href={`/ward${w.ward_number}`}
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedWardForArrival(w)}
                                   className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-slate-900 bg-amber-500 hover:bg-amber-400 rounded-lg transition"
                                 >
                                   Entry
-                                </Link>
+                                </button>
                                 <button
                                   onClick={() => setSelectedWardForEdit(w)}
                                   className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition"
@@ -988,6 +986,33 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* INSTANT RECORD ARRIVAL MODAL (0ms response) */}
+      {selectedWardForArrival && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-lg relative my-auto">
+            <button
+              onClick={() => {
+                setSelectedWardForArrival(null);
+                loadDashboardData(true);
+              }}
+              className="mb-2 ml-auto text-white hover:text-amber-400 font-bold text-xs sm:text-sm flex items-center gap-1 bg-slate-900/90 px-3 py-1.5 rounded-full border border-slate-700 transition"
+            >
+              <X className="w-4 h-4" />
+              <span>Close Window</span>
+            </button>
+            <WardEntryCard
+              wardNumber={selectedWardForArrival.ward_number}
+              initialWardData={selectedWardForArrival}
+              isAdmin={true}
+              onScanNext={() => {
+                setSelectedWardForArrival(null);
+                loadDashboardData(true);
+              }}
+            />
           </div>
         </div>
       )}

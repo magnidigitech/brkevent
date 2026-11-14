@@ -81,3 +81,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ valid: false, message }, { status: 500 });
   }
 }
+

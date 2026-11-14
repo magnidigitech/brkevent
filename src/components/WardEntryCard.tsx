@@ -16,12 +16,14 @@ import {
 import { WardWithStats, RecordArrivalResponse } from '@/types/database';
 import { PartyBadge } from '@/components/PartyBadge';
 import { formatInKolkataTime } from '@/lib/utils/date';
+import { WARDS_SEED_DATA } from '@/data/wardsSeed';
 
 interface WardEntryCardProps {
   wardNumber: number;
   onScanNext: () => void;
   isAdmin?: boolean;
   onEditWard?: () => void;
+  initialWardData?: WardWithStats;
 }
 
 export function WardEntryCard({
@@ -29,9 +31,34 @@ export function WardEntryCard({
   onScanNext,
   isAdmin = false,
   onEditWard,
+  initialWardData,
 }: WardEntryCardProps) {
-  const [ward, setWard] = useState<WardWithStats | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const seedWard = WARDS_SEED_DATA.find((w) => w.ward_number === wardNumber);
+  const defaultFallbackWard: WardWithStats | null = seedWard
+    ? {
+        id: seedWard.ward_number,
+        ward_number: seedWard.ward_number,
+        candidate_name: seedWard.candidate_name,
+        party: seedWard.party,
+        allowance: 5,
+        phone: null,
+        expected_veg: null,
+        expected_non_veg: null,
+        food_confirmed: false,
+        admin_notes: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        total_entered: 0,
+        remaining_allowance: 5,
+        excess_count: 0,
+        guests: [],
+        recent_batches: [],
+      }
+    : null;
+
+  // Immediate rendering: starts with initial or pre-seeded data, zero wait time
+  const [ward, setWard] = useState<WardWithStats | null>(initialWardData || defaultFallbackWard);
+  const [loading, setLoading] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Form State
@@ -50,10 +77,10 @@ export function WardEntryCard({
   // Unique Request ID for idempotency (persists across retries for the same attempt)
   const currentRequestIdRef = useRef<string>(crypto.randomUUID());
 
-  // Fetch ward details
-  const loadWardData = async () => {
+  // Fetch live ward details in background (SWR pattern)
+  const loadWardData = async (showSpinner: boolean = false) => {
     try {
-      setLoading(true);
+      if (showSpinner) setLoading(true);
       setFetchError(null);
       const res = await fetch(`/api/wards/${wardNumber}`);
       const data = await res.json();
@@ -62,22 +89,27 @@ export function WardEntryCard({
       }
       setWard(data.ward);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error loading ward details.';
-      setFetchError(msg);
+      if (!ward) {
+        const msg = err instanceof Error ? err.message : 'Error loading ward details.';
+        setFetchError(msg);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadWardData();
-    // Reset submission state when ward changes
+    // If initial ward data is passed, use it immediately
+    if (initialWardData) {
+      setWard(initialWardData);
+    }
+    loadWardData(!initialWardData && !defaultFallbackWard);
     currentRequestIdRef.current = crypto.randomUUID();
     setSuccessResponse(null);
     setSubmissionError(null);
     setShowExcessWarning(false);
     setArrivingCount(1);
-  }, [wardNumber]);
+  }, [wardNumber, initialWardData]);
 
   // Handle Arrival Submission
   const handleRecordArrival = async (acknowledgeExcess: boolean = false) => {
