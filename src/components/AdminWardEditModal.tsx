@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, AlertTriangle, Save, RefreshCw, UserPlus, Trash2 } from 'lucide-react';
+import { X, AlertTriangle, Save, RefreshCw, UserPlus, Trash2, Phone } from 'lucide-react';
 import { WardWithStats, PartyAffiliation } from '@/types/database';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 
 interface AdminWardEditModalProps {
   ward: WardWithStats;
@@ -154,15 +155,29 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
           {/* Phone & Allowance */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Phone Number (Optional)
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Phone Number
+                </label>
+                {phone && phone.trim().length >= 10 && (
+                  <WhatsAppButton
+                    ward={{
+                      ward_number: ward.ward_number,
+                      candidate_name: candidateName,
+                      party: party,
+                      allowance: ward.allowance,
+                      phone: phone,
+                    }}
+                    variant="pill"
+                  />
+                )}
+              </div>
               <input
                 type="text"
-                placeholder="+91..."
+                placeholder="10-digit number e.g. 9397605656"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
 

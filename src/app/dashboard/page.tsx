@@ -24,12 +24,16 @@ import {
   QrCode,
   ArrowRight,
   X,
-  UserCheck
+  UserCheck,
+  Settings
 } from 'lucide-react';
 import { WardWithStats, ArrivalBatch, DashboardSummary } from '@/types/database';
 import { PartyBadge } from '@/components/PartyBadge';
 import { AdminWardEditModal } from '@/components/AdminWardEditModal';
 import { WardEntryCard } from '@/components/WardEntryCard';
+import { SettingsModal } from '@/components/SettingsModal';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
+import { createClient } from '@/lib/supabase/client';
 import { formatInKolkataTime } from '@/lib/utils/date';
 
 export default function DashboardPage() {
@@ -57,6 +61,9 @@ export default function DashboardPage() {
 
   // Instant Record Arrival Modal State (0ms open)
   const [selectedWardForArrival, setSelectedWardForArrival] = useState<WardWithStats | null>(null);
+
+  // Settings Modal State (WhatsApp message pattern)
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
   // Void Batch Modal State
   const [batchToVoid, setBatchToVoid] = useState<ArrivalBatch | null>(null);
@@ -90,13 +97,72 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Periodic polling every 12 seconds for reliable multi-device sync
+  // Multi-Device Realtime & Fast AJAX Sync (reflects phone arrivals across devices without page reload)
   useEffect(() => {
     loadDashboardData();
+
+    // Rapid AJAX polling every 3 seconds while tab is visible
     const interval = setInterval(() => {
-      loadDashboardData(true);
-    }, 12000);
-    return () => clearInterval(interval);
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadDashboardData(true);
+      }
+    }, 3000);
+
+    // Instant AJAX refresh when returning to this tab or unlocking phone screen
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadDashboardData(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cross-tab broadcast channel for instant 0ms sync on same device
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        bc = new BroadcastChannel('brk_sync_channel');
+        bc.onmessage = () => {
+          loadDashboardData(true);
+        };
+      } catch {}
+    }
+
+    // Supabase Realtime channel for live cross-device multi-phone sync
+    let supabaseSub: any = null;
+    try {
+      const supabase = createClient();
+      supabaseSub = supabase
+        .channel('dashboard-live-sync')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'arrival_batches' },
+          () => {
+            loadDashboardData(true);
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'wards' },
+          () => {
+            loadDashboardData(true);
+          }
+        )
+        .subscribe();
+    } catch (err) {
+      console.warn('Realtime subscription fallback to rapid AJAX polling:', err);
+    }
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (bc) bc.close();
+      if (supabaseSub) {
+        try {
+          const supabase = createClient();
+          supabase.removeChannel(supabaseSub);
+        } catch {}
+      }
+    };
   }, [loadDashboardData]);
 
   // Fetch Audit Logs when Audit Tab is opened
@@ -208,6 +274,17 @@ export default function DashboardPage() {
             title="Refresh Totals"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-amber-600' : ''}`} />
+          </button>
+
+          {/* WhatsApp & Message Settings Button */}
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold border border-slate-300 shadow-2xs transition"
+            title="Configure WhatsApp Message Pattern & Formatting"
+          >
+            <Settings className="w-3.5 h-3.5 text-slate-600" />
+            <span className="hidden sm:inline">Settings</span>
           </button>
 
           {/* CSV Export Buttons */}
@@ -517,10 +594,29 @@ export default function DashboardPage() {
                           <PartyBadge party={w.party} size="sm" />
                         </div>
 
-                        {w.phone && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-3">
-                            <Phone className="w-3.5 h-3.5 text-slate-400" />
-                            <span>{w.phone}</span>
+                        {w.phone ? (
+                          <div className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-xl bg-slate-50 border border-slate-200/60 mb-3 text-xs">
+                            <a
+                              href={`tel:${w.phone}`}
+                              className="flex items-center gap-1.5 text-slate-700 hover:text-blue-600 font-bold transition font-mono"
+                              title="Click to Call"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Phone className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{w.phone}</span>
+                            </a>
+                            <WhatsAppButton ward={w} variant="pill" />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between mb-3 text-[11px] text-slate-400">
+                            <span className="italic">No phone listed</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedWardForEdit(w)}
+                              className="text-amber-700 hover:underline font-bold"
+                            >
+                              + Add Phone
+                            </button>
                           </div>
                         )}
 
@@ -664,8 +760,19 @@ export default function DashboardPage() {
                             </td>
                             <td className="py-3 px-4">
                               <span className="font-bold text-slate-800 block">{w.candidate_name}</span>
-                              {w.phone && (
-                                <span className="text-[11px] text-slate-400 block">{w.phone}</span>
+                              {w.phone ? (
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <a
+                                    href={`tel:${w.phone}`}
+                                    className="text-[11px] text-slate-600 hover:text-blue-600 font-mono font-medium"
+                                    title="Click to Call"
+                                  >
+                                    {w.phone}
+                                  </a>
+                                  <WhatsAppButton ward={w} variant="icon" />
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 italic block mt-0.5">No phone</span>
                               )}
                             </td>
                             <td className="py-3 px-4">
@@ -1016,6 +1123,12 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* WHATSAPP & MESSAGE PATTERN SETTINGS MODAL */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
     </div>
   );
 }

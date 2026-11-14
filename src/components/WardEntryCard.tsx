@@ -11,10 +11,12 @@ import {
   RefreshCw,
   QrCode,
   ShieldAlert,
-  UserCheck
+  UserCheck,
+  Phone
 } from 'lucide-react';
 import { WardWithStats, RecordArrivalResponse } from '@/types/database';
 import { PartyBadge } from '@/components/PartyBadge';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { formatInKolkataTime } from '@/lib/utils/date';
 import { WARDS_SEED_DATA } from '@/data/wardsSeed';
 
@@ -41,7 +43,7 @@ export function WardEntryCard({
         candidate_name: seedWard.candidate_name,
         party: seedWard.party,
         allowance: 5,
-        phone: null,
+        phone: seedWard.phone || null,
         expected_veg: null,
         expected_non_veg: null,
         food_confirmed: false,
@@ -173,6 +175,14 @@ export function WardEntryCard({
       // Success confirmed by DB!
       setSuccessResponse(data);
       setShowExcessWarning(false);
+      // Broadcast instant sync to all local tabs/windows
+      if (typeof BroadcastChannel !== 'undefined') {
+        try {
+          const bc = new BroadcastChannel('brk_sync_channel');
+          bc.postMessage({ type: 'ARRIVAL_RECORDED', ward_id: ward.id });
+          bc.close();
+        } catch {}
+      }
       // Reload updated ward state
       await loadWardData();
       // Prepare new request ID for any next submission
@@ -277,7 +287,17 @@ export function WardEntryCard({
               <span className="text-xs text-slate-500 font-medium">Principal Invitee / Candidate</span>
               <h3 className="text-lg font-bold text-slate-900 mt-0.5">{ward.candidate_name}</h3>
               {ward.phone && (
-                <p className="text-xs text-slate-600 mt-0.5 font-medium">Phone: {ward.phone}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <a
+                    href={`tel:${ward.phone}`}
+                    className="text-xs text-slate-700 hover:text-blue-600 font-bold font-mono flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200 transition"
+                    title="Click to Call"
+                  >
+                    <Phone className="w-3 h-3 text-slate-400" />
+                    <span>{ward.phone}</span>
+                  </a>
+                  <WhatsAppButton ward={ward} variant="pill" />
+                </div>
               )}
             </div>
 
@@ -463,7 +483,7 @@ export function WardEntryCard({
 
             {/* Quick Increment Buttons */}
             <div className="flex gap-1.5">
-              {[1, 2, 3, 5].map((num) => (
+              {[1, 2, 3, 4, 5].map((num) => (
                 <button
                   key={num}
                   type="button"

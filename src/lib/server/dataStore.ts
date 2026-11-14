@@ -51,7 +51,7 @@ function initializeInMemoryWards() {
         candidate_name: w.candidate_name,
         party: w.party,
         allowance: 5,
-        phone: null,
+        phone: w.phone || null,
         expected_veg: null,
         expected_non_veg: null,
         food_confirmed: false,
@@ -145,8 +145,12 @@ export async function getAllWards(): Promise<WardWithStats[]> {
         const totalEntered = activeBatches.reduce((acc, b) => acc + b.batch_size, 0);
         const wardGuests = guestsByWard.get(w.id) || [];
 
+        const seedFallback = WARDS_SEED_DATA.find((s) => s.ward_number === w.ward_number);
+        const resolvedPhone = w.phone || seedFallback?.phone || null;
+
         return {
           ...w,
+          phone: resolvedPhone,
           total_entered: totalEntered,
           remaining_allowance: Math.max(0, w.allowance - totalEntered),
           excess_count: Math.max(0, totalEntered - w.allowance),
@@ -212,8 +216,12 @@ export async function getWardByNumber(wardNumber: number): Promise<WardWithStats
         recorded_by_email: profileMap.get(b.recorded_by)?.email || '',
       }));
 
+      const seedFallback = WARDS_SEED_DATA.find((s) => s.ward_number === ward.ward_number);
+      const resolvedPhone = ward.phone || seedFallback?.phone || null;
+
       return {
         ...ward,
+        phone: resolvedPhone,
         total_entered: totalEntered,
         remaining_allowance: Math.max(0, ward.allowance - totalEntered),
         excess_count: Math.max(0, totalEntered - ward.allowance),
