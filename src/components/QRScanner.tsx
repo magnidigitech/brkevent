@@ -5,6 +5,12 @@ import { Camera, CameraOff, AlertCircle, RefreshCw, Search, X, ChevronRight } fr
 import { parseWardQRCode } from '@/lib/qr/parser';
 import { WARDS_SEED_DATA } from '@/data/wardsSeed';
 import { PartyBadge } from '@/components/PartyBadge';
+import {
+  initOfflineStorage,
+  updateCachedWards,
+  getCachedCanvaResolution,
+  cacheCanvaResolution,
+} from '@/lib/offline/offlineSync';
 
 interface QRScannerProps {
   onWardScanned: (wardNumber: number) => void;
@@ -21,11 +27,19 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
 
   // Sync latest live ward details (candidate names, updated phones)
   useEffect(() => {
+    // 1. Immediately initialize all 76 divisions from local cache (0ms)
+    const offlineWards = initOfflineStorage();
+    if (offlineWards && offlineWards.size > 0) {
+      setWards(Array.from(offlineWards.values()));
+    }
+
+    // 2. Refresh from server in background without blocking
     fetch('/api/wards')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.success && Array.isArray(data?.wards) && data.wards.length > 0) {
           setWards(data.wards);
+          updateCachedWards(data.wards);
         }
       })
       .catch(() => {});
@@ -71,11 +85,22 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
 
     // If dynamic redirect QR (e.g. Canva QR)
     if (parseResult.isDynamicRedirect) {
+      // 1. Instant cache check (0ms)
+      const cachedWardNumber = getCachedCanvaResolution(decodedText);
+      if (cachedWardNumber) {
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate([80, 40, 80]); } catch {}
+        }
+        onWardScanned(cachedWardNumber);
+        return;
+      }
+
       try {
         setIsInitializing(true);
         const res = await fetch(`/api/qr/resolve?url=${encodeURIComponent(decodedText)}`);
         const data = await res.json();
         if (data.valid && data.wardNumber) {
+          cacheCanvaResolution(decodedText, data.wardNumber);
           if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
             try { navigator.vibrate([80, 40, 80]); } catch {}
           }

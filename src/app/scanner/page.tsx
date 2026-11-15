@@ -7,7 +7,13 @@ import { QRScanner } from '@/components/QRScanner';
 import { WardEntryCard } from '@/components/WardEntryCard';
 import { AdminWardEditModal } from '@/components/AdminWardEditModal';
 import { WardWithStats, UserProfile } from '@/types/database';
-import { RefreshCw, Lock } from 'lucide-react';
+import { RefreshCw, Lock, Wifi, WifiOff, CloudUpload, CheckCircle2 } from 'lucide-react';
+import {
+  initOfflineStorage,
+  flushPendingQueue,
+  getPendingQueue,
+  updateCachedWards,
+} from '@/lib/offline/offlineSync';
 
 export default function ScannerPage() {
   const router = useRouter();
@@ -15,6 +21,58 @@ export default function ScannerPage() {
   const [editingWard, setEditingWard] = useState<WardWithStats | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [pendingCount, setPendingCount] = useState<number>(0);
+
+  // Initialize offline storage & automatic background sync loop
+  useEffect(() => {
+    // 1. Immediately initialize offline storage so all 76 divisions are cached
+    initOfflineStorage();
+    setPendingCount(getPendingQueue().length);
+    if (typeof navigator !== 'undefined') {
+      setIsOnline(navigator.onLine);
+    }
+
+    // 2. Network listener for online/offline events
+    const handleNetworkChange = () => {
+      const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      setIsOnline(online);
+      if (online) {
+        flushPendingQueue().then((res) => {
+          setPendingCount(res.remaining);
+        });
+      }
+    };
+
+    window.addEventListener('online', handleNetworkChange);
+    window.addEventListener('offline', handleNetworkChange);
+
+    // 3. Periodic background sync (every 6 seconds)
+    const interval = setInterval(() => {
+      setPendingCount(getPendingQueue().length);
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        flushPendingQueue().then((res) => {
+          setPendingCount(res.remaining);
+        });
+      }
+    }, 6000);
+
+    // 4. Initial background sync of all 76 divisions from server
+    fetch('/api/wards')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && Array.isArray(data?.wards)) {
+          updateCachedWards(data.wards);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      window.removeEventListener('online', handleNetworkChange);
+      window.removeEventListener('offline', handleNetworkChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     fetch('/api/auth/profile')
@@ -140,6 +198,31 @@ export default function ScannerPage() {
     <div className="flex-1 py-8 px-4 sm:px-6 flex flex-col items-center justify-start">
       {/* Top Title Banner (Apple Minimalist Style) */}
       <div className="w-full max-w-lg mb-6 text-center">
+        {/* Offline Status & Sync Queue Pill */}
+        <div className="flex items-center justify-center gap-2 mb-2.5">
+          {pendingCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => flushPendingQueue().then((r) => setPendingCount(r.remaining))}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors shadow-xs active:scale-95"
+              title="Click to flush queue now"
+            >
+              <CloudUpload className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
+              <span>{pendingCount} offline {pendingCount === 1 ? 'entry' : 'entries'} queued · Tap to sync</span>
+            </button>
+          ) : isOnline ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60 shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Sync · Instant 0ms Scan</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-neutral-100 text-neutral-700 border border-neutral-200 shadow-xs">
+              <WifiOff className="w-3 h-3 text-neutral-500" />
+              <span>Offline Ready · 76 Divisions Cached</span>
+            </span>
+          )}
+        </div>
+
         <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight">
           Gate Attendance Scanner
         </h1>

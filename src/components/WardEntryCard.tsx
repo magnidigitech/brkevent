@@ -19,6 +19,12 @@ import { PartyBadge } from '@/components/PartyBadge';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { formatInKolkataTime } from '@/lib/utils/date';
 import { WARDS_SEED_DATA } from '@/data/wardsSeed';
+import {
+  getCachedWard,
+  updateCachedWards,
+  recordArrivalOptimistic,
+  flushPendingQueue,
+} from '@/lib/offline/offlineSync';
 
 interface WardEntryCardProps {
   wardNumber: number;
@@ -58,8 +64,10 @@ export function WardEntryCard({
       }
     : null;
 
-  // Immediate rendering: starts with initial or pre-seeded data, zero wait time
-  const [ward, setWard] = useState<WardWithStats | null>(initialWardData || defaultFallbackWard);
+  // Immediate rendering: loads from offline cache or pre-seeded data in 0ms (zero wait time)
+  const [ward, setWard] = useState<WardWithStats | null>(() => {
+    return initialWardData || getCachedWard(wardNumber) || defaultFallbackWard;
+  });
   const [loading, setLoading] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -79,7 +87,7 @@ export function WardEntryCard({
   // Unique Request ID for idempotency (persists across retries for the same attempt)
   const currentRequestIdRef = useRef<string>(crypto.randomUUID());
 
-  // Fetch live ward details in background (SWR pattern)
+  // Silent background revalidation (SWR pattern) - never blocks UI with a full-screen spinner
   const loadWardData = async (showSpinner: boolean = false) => {
     try {
       if (showSpinner) setLoading(true);
@@ -90,7 +98,10 @@ export function WardEntryCard({
         throw new Error(data.message || 'Failed to load division invitation.');
       }
       setWard(data.ward);
+      updateCachedWards([data.ward]);
     } catch (err: unknown) {
+      // If we already have cached data in 'ward', suppress error and allow smooth offline operation
+      console.warn('Background ward sync skipped (offline or weak network):', err);
       if (!ward) {
         const msg = err instanceof Error ? err.message : 'Error loading division details.';
         setFetchError(msg);
@@ -101,11 +112,13 @@ export function WardEntryCard({
   };
 
   useEffect(() => {
-    // If initial ward data is passed, use it immediately
-    if (initialWardData) {
-      setWard(initialWardData);
+    // 1. Immediately display from instant offline cache
+    const instantWard = initialWardData || getCachedWard(wardNumber) || defaultFallbackWard;
+    if (instantWard) {
+      setWard(instantWard);
     }
-    loadWardData(!initialWardData && !defaultFallbackWard);
+    // 2. Silent background sync without blocking screen
+    loadWardData(false);
     currentRequestIdRef.current = crypto.randomUUID();
     setSuccessResponse(null);
     setSubmissionError(null);
@@ -113,7 +126,7 @@ export function WardEntryCard({
     setArrivingCount(1);
   }, [wardNumber, initialWardData]);
 
-  // Handle Arrival Submission
+  // Handle Arrival Submission with Instant Optimistic UI + Offline Queue
   const handleRecordArrival = async (acknowledgeExcess: boolean = false) => {
     if (!ward) return;
 
@@ -147,33 +160,48 @@ export function WardEntryCard({
         acknowledge_excess: acknowledgeExcess,
       };
 
-      const res = await fetch('/api/arrivals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      // 1. Optimistic Local Record: update screen immediately in 0ms!
+      const { ward: updatedWard, response: localResp } = recordArrivalOptimistic(payload);
+      setWard(updatedWard);
 
-      const data: RecordArrivalResponse = await res.json();
+      // 2. Attempt server sync
+      try {
+        const res = await fetch('/api/arrivals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
 
-      if (!res.ok || !data.success) {
-        // Concurrency mismatch or server excess warning required
-        if (data.concurrency_mismatch || data.excess_warning_needed) {
+        const data: RecordArrivalResponse = await res.json();
+
+        if (res.ok && data.success) {
+          setSuccessResponse(data);
+          flushPendingQueue().catch(() => {});
+        } else if (data.concurrency_mismatch || data.excess_warning_needed) {
           setShowExcessWarning(true);
           setExcessWarningDetails({
             proposedTotal: data.cumulative_entered || (data.prior_entered || 0) + arrivingCount,
             excessBy: data.excess_by || Math.max(0, (data.cumulative_entered || 0) - 5),
           });
           setSubmissionError(data.message || 'Attendance was updated. Please re-confirm.');
-          // Refresh ward data to get the latest count
           await loadWardData();
           return;
+        } else {
+          // Queued locally, will flush in background
+          setSuccessResponse({
+            ...localResp,
+            message: 'Recorded locally in offline queue. Auto-syncing with server...',
+          });
         }
-
-        throw new Error(data.message || 'Failed to record entry. Please retry.');
+      } catch (networkErr) {
+        // Network unavailable or slow - user gets immediate success!
+        console.warn('Network unreachable, arrival saved to local sync queue:', networkErr);
+        setSuccessResponse({
+          ...localResp,
+          message: 'Saved locally in Offline Mode. Will auto-sync when connection restores.',
+        });
       }
 
-      // Success confirmed by DB!
-      setSuccessResponse(data);
       setShowExcessWarning(false);
       // Broadcast instant sync to all local tabs/windows
       if (typeof BroadcastChannel !== 'undefined') {
