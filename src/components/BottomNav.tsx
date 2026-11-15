@@ -9,8 +9,13 @@ export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Hide on login page or when pathname is not yet resolved
-  if (!pathname || pathname === '/login') {
+  // Hide on login page or end-user ticket invitation passes
+  if (
+    !pathname ||
+    pathname === '/login' ||
+    pathname.startsWith('/division') ||
+    pathname.startsWith('/ward')
+  ) {
     return null;
   }
 

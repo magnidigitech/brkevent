@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import QRCode from 'qrcode';
 import { WARDS_SEED_DATA } from '@/data/wardsSeed';
 import { PartyBadge } from '@/components/PartyBadge';
-import { Maximize2, X, Sparkles, QrCode, ArrowRight } from 'lucide-react';
+import { Maximize2, X, QrCode } from 'lucide-react';
 
 interface WardClientViewProps {
   wardNumber: number;
@@ -28,7 +28,6 @@ export function WardClientView({
   const [party, setParty] = useState<'TDP' | 'JSP' | 'BJP'>(seedWard?.party || 'TDP');
   const [qrSvg, setQrSvg] = useState<string>('');
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
-  const wakeLockRef = useRef<any>(null);
 
   // The canonical URL to encode into the QR code
   const targetUrl = typeof window !== 'undefined'
@@ -63,49 +62,16 @@ export function WardClientView({
       .catch(() => {});
   }, [wardNumber]);
 
-  // Request Wake Lock and enter zoom
-  const handleOpenZoom = async () => {
+  const handleOpenZoom = () => {
     setIsZoomed(true);
-
-    // Request Screen Wake Lock so screen doesn't dim or lock at the gate
-    try {
-      if ('wakeLock' in navigator) {
-        const lock = await (navigator as any).wakeLock.request('screen');
-        wakeLockRef.current = lock;
-      }
-    } catch (e) {
-      // Wake lock not supported or denied
-    }
-
-    // Try requesting fullscreen for max brightness surface area
-    try {
-      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      }
-    } catch (e) {}
   };
 
   const handleCloseZoom = () => {
     setIsZoomed(false);
-
-    // Release wake lock
-    if (wakeLockRef.current) {
-      try {
-        wakeLockRef.current.release();
-        wakeLockRef.current = null;
-      } catch (e) {}
-    }
-
-    // Exit fullscreen if active
-    try {
-      if (document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      }
-    } catch (e) {}
   };
 
   return (
-    <div className="flex-1 py-6 px-4 sm:px-6 flex flex-col items-center justify-center min-h-[85vh]">
+    <div className="flex-1 min-h-screen py-8 sm:py-12 px-4 flex flex-col items-center justify-center bg-[#f5f5f7]">
       {/* ========================================================================= */}
       {/* SIMPLE VIP INVITATION PASS CARD */}
       {/* ========================================================================= */}
@@ -169,7 +135,7 @@ export function WardClientView({
             type="button"
             onClick={handleOpenZoom}
             className="group relative bg-white p-3 rounded-2xl border-2 border-neutral-900/10 hover:border-neutral-900 shadow-xs hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col items-center"
-            title="Click to Zoom QR Code & Maximize Brightness"
+            title="Click to enlarge QR code"
           >
             {/* Rendered SVG QR code */}
             {qrSvg ? (
@@ -186,7 +152,7 @@ export function WardClientView({
             {/* Click to Zoom Pill */}
             <div className="mt-2.5 flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-900 text-white text-[11px] font-medium shadow-xs group-hover:bg-neutral-800 transition-colors">
               <Maximize2 className="w-3 h-3" />
-              <span>Tap to Zoom & Brighten</span>
+              <span>Tap to Zoom</span>
             </div>
           </button>
 
@@ -196,22 +162,8 @@ export function WardClientView({
         </div>
       </div>
 
-      {/* Staff shortcut if logged in */}
-      {initialAuthenticated && (
-        <div className="mt-6">
-          <Link
-            href="/scanner"
-            className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-900 font-medium px-3.5 py-1.5 rounded-xl bg-white/80 border border-neutral-200/80 shadow-2xs transition-colors"
-          >
-            <span>Staff Mode: Open Gate Scanner</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      )}
-
       {/* ========================================================================= */}
-      {/* FULLSCREEN BRIGHT-SCREEN ZOOM MODAL */}
-      {/* Pure white backdrop maximizes ambient illumination for gate barcode readers */}
+      {/* CLEAN HIGH-CONTRAST ZOOM MODAL */}
       {/* ========================================================================= */}
       {isZoomed && (
         <div
@@ -251,7 +203,7 @@ export function WardClientView({
             </button>
           </div>
 
-          {/* Centered Maximum Brightness QR */}
+          {/* Centered Large QR Code */}
           <div className="flex flex-col items-center my-auto">
             <div className="p-3 bg-white rounded-3xl border-4 border-black shadow-lg">
               {qrSvg && (
@@ -272,15 +224,11 @@ export function WardClientView({
             </div>
           </div>
 
-          {/* Bottom Scanner Instructions */}
-          <div className="w-full text-center pb-4">
-            <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-medium border border-emerald-200/60 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Screen brightened for gate scanning</span>
-            </div>
-            <p className="text-xs text-neutral-400 block font-normal">
+          {/* Bottom Instructions */}
+          <div className="w-full text-center pb-6">
+            <span className="text-xs text-neutral-400 font-normal">
               Tap anywhere on screen to close
-            </p>
+            </span>
           </div>
         </div>
       )}

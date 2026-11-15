@@ -310,7 +310,7 @@ export default function DashboardPage() {
   }, [wards, searchQuery, partyFilter, activeTab, statusFilter, foodFilter]);
 
   return (
-    <div className="flex-1 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+    <div className="flex-1 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full pb-28 sm:pb-8">
       {/* Top Header & Realtime Controls (Apple Minimalist Style) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-7">
         <div>

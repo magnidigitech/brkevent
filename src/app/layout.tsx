@@ -40,7 +40,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[#f5f5f7] flex flex-col text-[#1d1d1f] antialiased selection:bg-neutral-200" suppressHydrationWarning>
         <Header />
-        <main className="flex-1 flex flex-col pb-24 sm:pb-8">{children}</main>
+        <main className="flex-1 flex flex-col">{children}</main>
         <BottomNav />
       </body>
     </html>

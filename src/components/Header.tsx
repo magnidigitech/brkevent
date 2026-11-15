@@ -61,6 +61,15 @@ export function Header() {
 
   const isAdmin = profile?.role === 'admin';
 
+  // Hide header on end-user ticket invitation passes for a clean, dedicated pass view
+  if (
+    !pathname ||
+    pathname.startsWith('/division') ||
+    pathname.startsWith('/ward')
+  ) {
+    return null;
+  }
+
   return (
     <header className="bg-white/80 backdrop-blur-2xl border-b border-black/[0.06] sticky top-0 z-40 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

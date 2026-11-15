@@ -195,7 +195,7 @@ export default function ScannerPage() {
   }
 
   return (
-    <div className="flex-1 py-8 px-4 sm:px-6 flex flex-col items-center justify-start">
+    <div className="flex-1 py-8 px-4 sm:px-6 flex flex-col items-center justify-start pb-28 sm:pb-8">
       {/* Top Title Banner (Apple Minimalist Style) */}
       <div className="w-full max-w-lg mb-6 text-center">
         {/* Offline Status & Sync Queue Pill */}
