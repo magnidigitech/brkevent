@@ -1,0 +1,457 @@
+[
+  {
+    "ward": 1,
+    "nameEn": "Kota Pitchi Reddy",
+    "party": "TDP",
+    "nameTe": "కోట పిచ్చిరెడ్డి",
+    "nameAnu": "¿Ãf |¾ºÌÂs&¦"
+  },
+  {
+    "ward": 3,
+    "nameEn": "Shaik Shabana",
+    "party": "TDP",
+    "nameTe": "షేక్ షబానా",
+    "nameAnu": "w¿ù wu²H"
+  },
+  {
+    "ward": 4,
+    "nameEn": "Ila Anitha",
+    "party": "TDP",
+    "nameTe": "ఇలా అనిత",
+    "nameAnu": "ý² nÔá"
+  },
+  {
+    "ward": 5,
+    "nameEn": "Yadla Lakshmi",
+    "party": "JSP",
+    "nameTe": "యాడ్ల లక్ష్మి",
+    "nameAnu": "jáÖ&á¢ \\¿ùü$T"
+  },
+  {
+    "ward": 6,
+    "nameEn": "Irri Sri Sai Varma",
+    "party": "JSP",
+    "nameTe": "ఇర్రి శ్రీ సాయి వర్మ",
+    "nameAnu": "çsY¯ kÍsTT esá"
+  },
+  {
+    "ward": 9,
+    "nameEn": "Pothuraju Samatha",
+    "party": "TDP",
+    "nameTe": "పోతురాజు సమత",
+    "nameAnu": "bþÔáTsE deTÔá"
+  },
+  {
+    "ward": 10,
+    "nameEn": "Dr. Uma Shankar Sanakkayala",
+    "party": "BJP",
+    "nameTe": "డాక్టర్ సనక్కాయల ఉమాశంకర్",
+    "nameAnu": "&Å·¼sY dqÅØjá§\\ eÖXø+Å·sY"
+  },
+  {
+    "ward": 11,
+    "nameEn": "Mohammed Abdul Faiz",
+    "party": "TDP",
+    "nameTe": "మహమ్మద్ అబ్దుల్ ఫైజ్",
+    "nameAnu": "eTV²eT< nTÝýÙ |ÕCÙ"
+  },
+  {
+    "ward": 13,
+    "nameEn": "Gali Satish Babu",
+    "party": "TDP",
+    "nameTe": "గాలి సతీష్ బాబు",
+    "nameAnu": ">±* drwt u²T"
+  },
+  {
+    "ward": 14,
+    "nameEn": "Yellavula Soujanya",
+    "party": "TDP",
+    "nameTe": "ఎల్లవుల సౌజన్య",
+    "nameAnu": "b\\¢eÚ\\ kåÈq«"
+  },
+  {
+    "ward": 17,
+    "nameEn": "Shaik Naimuddin",
+    "party": "TDP",
+    "nameTe": "షేక్ నయీముద్దీన్",
+    "nameAnu": "w¿ù qsTÖeTTBÝH"
+  },
+  {
+    "ward": 18,
+    "nameEn": "Dadi Jyothi",
+    "party": "JSP",
+    "nameTe": "దాడి జ్యోతి",
+    "nameAnu": "<& CË«Ü"
+  },
+  {
+    "ward": 19,
+    "nameEn": "Dasari Lakshmi Durga",
+    "party": "JSP",
+    "nameTe": "దాసరి లక్ష్మీ దుర్గ",
+    "nameAnu": "<d] \\¿ùüMT <TsáZ"
+  },
+  {
+    "ward": 20,
+    "nameEn": "Saraswathi Venkata Srinivasa Raju",
+    "party": "TDP",
+    "nameTe": "సరస్వతి వెంకట శ్రీనివాస రాజు",
+    "nameAnu": "dsádÇÜ yî+Å·f çoyd sE"
+  },
+  {
+    "ward": 21,
+    "nameEn": "Palaparthi Sai Vanaja",
+    "party": "TDP",
+    "nameTe": "పాలపర్తి సాయి వనజ",
+    "nameAnu": "bÍ\\|]ï kÍsTT eqÈ"
+  },
+  {
+    "ward": 23,
+    "nameEn": "Bathula Prasad",
+    "party": "TDP",
+    "nameTe": "బత్తుల ప్రసాద్",
+    "nameAnu": "ÔáTï\\ ç|kÍ<"
+  },
+  {
+    "ward": 24,
+    "nameEn": "Nimmala Venkata Ramana",
+    "party": "JSP",
+    "nameTe": "నిమ్మల వెంకట రమణ",
+    "nameAnu": "eT\\ yî+Å·f sáeTD"
+  },
+  {
+    "ward": 25,
+    "nameEn": "Kunchapu Tripura Vasavi",
+    "party": "TDP",
+    "nameTe": "కుంచపు త్రిపుర వాసవి",
+    "nameAnu": "Å·+#á|Ú çÜ|Úsá yd$"
+  },
+  {
+    "ward": 26,
+    "nameEn": "Shaik Shajahan",
+    "party": "TDP",
+    "nameTe": "షేక్ షాజహాన్",
+    "nameAnu": "w¿ù cÍÈVäH"
+  },
+  {
+    "ward": 27,
+    "nameEn": "Vulli Gopala Krishna",
+    "party": "TDP",
+    "nameTe": "వుల్లి గోపాలకృష్ణ",
+    "nameAnu": "eÚýË¢bÍ\\undefinedw"
+  },
+  {
+    "ward": 28,
+    "nameEn": "Dontha Hymavathi",
+    "party": "JSP",
+    "nameTe": "దొంతా హైమావతి",
+    "nameAnu": "<=+Ô VÕ²eÖeÜ"
+  },
+  {
+    "ward": 29,
+    "nameEn": "Shaik Sharmila",
+    "party": "TDP",
+    "nameTe": "షేక్ షర్మిల",
+    "nameAnu": "w¿ù w]\\"
+  },
+  {
+    "ward": 30,
+    "nameEn": "Alla Sirisha",
+    "party": "JSP",
+    "nameTe": "అల్లా శిరీష",
+    "nameAnu": "n*¢¯w"
+  },
+  {
+    "ward": 31,
+    "nameEn": "Ganta Venkata Moulika",
+    "party": "TDP",
+    "nameTe": "గంటా వెంకట మౌలిక",
+    "nameAnu": ">£+{² yî+¿£³ eTò*¿£"
+  },
+  {
+    "ward": 32,
+    "nameEn": "Thummala Nagamalleswari",
+    "party": "TDP",
+    "nameTe": "తుమ్మల నాగమల్లేశ్వరి",
+    "nameAnu": "ÔáTeT\\ H>·eTýñ¢XøÇ]"
+  },
+  {
+    "ward": 33,
+    "nameEn": "Bonaboina Sujatha",
+    "party": "JSP",
+    "nameTe": "బొనబోయిన సుజాత",
+    "nameAnu": "u¤quËsTTq dTC²Ôá"
+  },
+  {
+    "ward": 34,
+    "nameEn": "Galam Venkateswarlu",
+    "party": "TDP",
+    "nameTe": "గళం వెంకటేశ్వర్లు",
+    "nameAnu": ">·Þø+ yî+Å·fñXøÇsÁT¢"
+  },
+  {
+    "ward": 35,
+    "nameEn": "Thadisetty Amala",
+    "party": "TDP",
+    "nameTe": "తాడిశెట్టి అమల",
+    "nameAnu": "Ô&Xè{ì¼ neT\\"
+  },
+  {
+    "ward": 37,
+    "nameEn": "Shaik Lal Ahmad",
+    "party": "JSP",
+    "nameTe": "షేక్ లాల్ అహ్మద్",
+    "nameAnu": "w¿ù ý²ýÙ nV²<"
+  },
+  {
+    "ward": 40,
+    "nameEn": "Chennam Venkata Seetayya",
+    "party": "TDP",
+    "nameTe": "చెన్నం వెంకట సీతయ్య",
+    "nameAnu": "#îq+ yî+Å·f dÓÔájá§«"
+  },
+  {
+    "ward": 41,
+    "nameEn": "Behra Gayathri",
+    "party": "BJP",
+    "nameTe": "బెహరా గాయత్రి",
+    "nameAnu": "uÉV²s >±já§çÜ"
+  },
+  {
+    "ward": 42,
+    "nameEn": "Tadisetty Venkata Uttej",
+    "party": "TDP",
+    "nameTe": "తాడిశెట్టి వెంకట ఉత్తేజ్",
+    "nameAnu": "Ô&XèfÉ¼+Å·f ÔûïCÙ"
+  },
+  {
+    "ward": 43,
+    "nameEn": "Rangavajjula Gayathri",
+    "party": "BJP",
+    "nameTe": "రంగవజ్జుల గాయత్రి",
+    "nameAnu": "sá+>·eE¨\\ >±já§çÜ"
+  },
+  {
+    "ward": 44,
+    "nameEn": "Gurram Prasad",
+    "party": "TDP",
+    "nameTe": "గుర్రం ప్రసాద్",
+    "nameAnu": ">·Tçsá+ ç|kÍ<"
+  },
+  {
+    "ward": 45,
+    "nameEn": "Muttineni Rajesh",
+    "party": "TDP",
+    "nameTe": "ముత్తినేని రాజేష్",
+    "nameAnu": "eTTÜïHû sCñwt"
+  },
+  {
+    "ward": 46,
+    "nameEn": "Jampani Naga Malleswari",
+    "party": "TDP",
+    "nameTe": "జంపని నాగమల్లేశ్వరి",
+    "nameAnu": "È+| H>·eTýñ¢XøÇ]"
+  },
+  {
+    "ward": 47,
+    "nameEn": "Shama Patan",
+    "party": "TDP",
+    "nameTe": "షామా పఠాన్",
+    "nameAnu": "cÍeÖ |sÄH"
+  },
+  {
+    "ward": 48,
+    "nameEn": "Manam Srinivas",
+    "party": "TDP",
+    "nameTe": "మనం శ్రీనివాస్",
+    "nameAnu": "eTq+ çoydt"
+  },
+  {
+    "ward": 49,
+    "nameEn": "Baligi Suguna Devi",
+    "party": "TDP",
+    "nameTe": "బలిగి సుగుణ దేవి",
+    "nameAnu": "*Ð dT>·TD <û$"
+  },
+  {
+    "ward": 50,
+    "nameEn": "Nulupuri Srinivasarao",
+    "party": "TDP",
+    "nameTe": "నులుపురి శ్రీనివాసరావు",
+    "nameAnu": "qT\\T|Ú] çoydseÚ"
+  },
+  {
+    "ward": 51,
+    "nameEn": "Nagineni Murali Krishna",
+    "party": "JSP",
+    "nameTe": "నాగినేని మురళీకృష్ణ",
+    "nameAnu": "HÐHû eTTsá°undefinedw"
+  },
+  {
+    "ward": 52,
+    "nameEn": "Panchumarthi Nagamani",
+    "party": "TDP",
+    "nameTe": "పంచుమర్తి నాగమణి",
+    "nameAnu": "|+#áTeT]ï H>·eTDì"
+  },
+  {
+    "ward": 53,
+    "nameEn": "Gurrala Madhubindu",
+    "party": "IND",
+    "nameTe": "గుర్రాల మధుబిందు",
+    "nameAnu": ">·Tçs\\ eT<óT_+<T"
+  },
+  {
+    "ward": 54,
+    "nameEn": "Pakalapati Srikanth",
+    "party": "TDP",
+    "nameTe": "పాకాలపాటి శ్రీకాంత్",
+    "nameAnu": "bÍÅ\\bÍ{ì çoÅ+ÔY"
+  },
+  {
+    "ward": 55,
+    "nameEn": "Gunda Bhavani",
+    "party": "TDP",
+    "nameTe": "గుండా భవాని",
+    "nameAnu": ">·T+& uóy"
+  },
+  {
+    "ward": 56,
+    "nameEn": "Vemulapalli Sriram Prasad",
+    "party": "TDP",
+    "nameTe": "వేములపల్లి శ్రీరామ్ ప్రసాద్",
+    "nameAnu": "yûeTT\\|ýÙ¢¯syT ç|kÍ<"
+  },
+  {
+    "ward": 57,
+    "nameEn": "Kommineni Koteswara Rao",
+    "party": "TDP",
+    "nameTe": "కొమ్మినేని కోటేశ్వరరావు",
+    "nameAnu": "¿=$THû ¿ÃfñXøÇsáseÚ"
+  },
+  {
+    "ward": 59,
+    "nameEn": "Peram Srinivasarao",
+    "party": "TDP",
+    "nameTe": "పేరం శ్రీనివాసరావు",
+    "nameAnu": "|sá+ çoydseÚ"
+  },
+  {
+    "ward": 60,
+    "nameEn": "Eluka Dhanalakshmi",
+    "party": "TDP",
+    "nameTe": "ఎలుక ధనలక్ష్మి",
+    "nameAnu": "b\\TÅ· <óq\\¿ùü$T"
+  },
+  {
+    "ward": 61,
+    "nameEn": "Bezzam Anil",
+    "party": "TDP",
+    "nameTe": "బెజ్జం అనిల్",
+    "nameAnu": "uÉÈ¨+ nýÙ"
+  },
+  {
+    "ward": 62,
+    "nameEn": "Nukavarapu Balaji",
+    "party": "TDP",
+    "nameTe": "నూకవరపు బాలాజీ",
+    "nameAnu": "qÖÅ·esá|Ú u²ý²J"
+  },
+  {
+    "ward": 63,
+    "nameEn": "Bettam Sowri",
+    "party": "TDP",
+    "nameTe": "బెత్తం సౌరి",
+    "nameAnu": "uÉÔáï+ kå]"
+  },
+  {
+    "ward": 64,
+    "nameEn": "Yerramsetti Rajesh",
+    "party": "JSP",
+    "nameTe": "యెర్రంశెట్టి రాజేష్",
+    "nameAnu": "jîTçsá+Xè{ì¼ sCñwt"
+  },
+  {
+    "ward": 65,
+    "nameEn": "Yerramsetti Sandhya",
+    "party": "TDP",
+    "nameTe": "యెర్రంశెట్టి సంధ్య",
+    "nameAnu": "jîTçsá+Xè{ì¼ d+<ó«"
+  },
+  {
+    "ward": 66,
+    "nameEn": "Talla Sambasiva Rao (Bujji)",
+    "party": "TDP",
+    "nameTe": "తల్లా సాంబశివరావు (బుజ్జి)",
+    "nameAnu": "Ôáý²¢ kÍ+¥eseÚ (T¨)"
+  },
+  {
+    "ward": 67,
+    "nameEn": "Konduri Samatha",
+    "party": "JSP",
+    "nameTe": "కొండూరి సమత",
+    "nameAnu": "¿=+&Ö] deTÔá"
+  },
+  {
+    "ward": 68,
+    "nameEn": "Vangara Edukondalu",
+    "party": "TDP",
+    "nameTe": "వంగర ఏడుకొండలు",
+    "nameAnu": "e+>·sá @&T¿=+&á\\T"
+  },
+  {
+    "ward": 69,
+    "nameEn": "Muppavarapu Bharathi",
+    "party": "TDP",
+    "nameTe": "ముప్పవరపు భారతి",
+    "nameAnu": "eTT|Îesá|Ú uó²sáÜ"
+  },
+  {
+    "ward": 70,
+    "nameEn": "Alladdi Jessy Krupa Sowjanya",
+    "party": "TDP",
+    "nameTe": "అల్లాడి జెస్సీ కృప సౌజన్య",
+    "nameAnu": "ný²¢& CÉundefinedà| kåÈq«"
+  },
+  {
+    "ward": 71,
+    "nameEn": "Gudimetla Dayaratnam",
+    "party": "TDP",
+    "nameTe": "గుడిమెట్ల దయారత్నం",
+    "nameAnu": ">·T&yîTf¢ <jáÖsáÔá+"
+  },
+  {
+    "ward": 72,
+    "nameEn": "Yarraguntla Anandrao",
+    "party": "TDP",
+    "nameTe": "యర్రగుంట్ల ఆనందరావు",
+    "nameAnu": "já§çsá>·T+f¢ q+<seÚ"
+  },
+  {
+    "ward": 73,
+    "nameEn": "Ayisetty Kanaka Durga",
+    "party": "JSP",
+    "nameTe": "ఆయిశెట్టి కనకదుర్గ",
+    "nameAnu": "sTTXè{ì¼ Å·qÅ·<TsáZ"
+  },
+  {
+    "ward": 74,
+    "nameEn": "Gudipalli Swathi Krishna",
+    "party": "TDP",
+    "nameTe": "గుడిపల్లి స్వాతి కృష్ణ",
+    "nameAnu": ">·T&|ýÙ¢yÜ undefinedw"
+  },
+  {
+    "ward": 75,
+    "nameEn": "Chereddy Naga Kranthi",
+    "party": "TDP",
+    "nameTe": "చెరెడ్డి నాగ క్రాంతి",
+    "nameAnu": "#îÂs&¦ H>· çÅ"
+  },
+  {
+    "ward": 76,
+    "nameEn": "Ankem Malini",
+    "party": "TDP",
+    "nameTe": "అంకం మాలిని",
+    "nameAnu": "n+Å·+ eÖ*"
+  }
+]

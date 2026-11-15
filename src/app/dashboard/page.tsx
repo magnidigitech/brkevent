@@ -39,10 +39,11 @@ import { AdminWardEditModal } from '@/components/AdminWardEditModal';
 import { WardEntryCard } from '@/components/WardEntryCard';
 import { SettingsModal } from '@/components/SettingsModal';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
+import { InvitationsSection } from '@/components/InvitationsSection';
 import { createClient } from '@/lib/supabase/client';
 import { formatInKolkataTime } from '@/lib/utils/date';
 
-export type DashboardTab = 'entries' | 'food' | 'history' | 'audit';
+export type DashboardTab = 'entries' | 'food' | 'history' | 'audit' | 'invitations';
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -581,6 +582,7 @@ export default function DashboardPage() {
             {activeTab === 'food' && <Utensils className="w-4 h-4" />}
             {activeTab === 'history' && <History className="w-4 h-4" />}
             {activeTab === 'audit' && <ShieldCheck className="w-4 h-4" />}
+            {activeTab === 'invitations' && <Sparkles className="w-4 h-4 text-amber-500" />}
           </span>
           <div className="flex flex-col">
             <span className="text-xs font-semibold text-neutral-900 leading-tight">
@@ -588,6 +590,7 @@ export default function DashboardPage() {
               {activeTab === 'food' && `Food Planning (${wards.length})`}
               {activeTab === 'history' && `History (${recentBatches.length})`}
               {activeTab === 'audit' && 'Audit Trail'}
+              {activeTab === 'invitations' && 'Invitations (65)'}
             </span>
             <span className="text-[11px] text-neutral-400 font-normal flex items-center gap-1 mt-0.5">
               <span>Tap to switch view</span>
@@ -682,6 +685,22 @@ export default function DashboardPage() {
           >
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Audit Trail</span>
+          </button>
+
+          {/* INVITATIONS (65 WINNING CORPORATORS) */}
+          <button
+            onClick={() => {
+              setActiveTab('invitations');
+              setSearchQuery('');
+            }}
+            className={`px-4 py-2 text-xs sm:text-sm rounded-xl transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeTab === 'invitations'
+                ? 'bg-white text-neutral-900 font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
+                : 'text-neutral-600 hover:text-neutral-900 font-medium'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <span>Invitations (65)</span>
           </button>
         </div>
 
@@ -1587,6 +1606,13 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* TAB 5: INVITATIONS & QR PASSES (65 WINNING CORPORATORS) */}
+      {/* ========================================================================= */}
+      {activeTab === 'invitations' && (
+        <InvitationsSection />
+      )}
+
       {/* ADMIN WARD EDIT MODAL */}
       {selectedWardForEdit && (
         <AdminWardEditModal
@@ -1813,6 +1839,27 @@ export default function DashboardPage() {
                     <span className="text-xs font-semibold">System Audit Trail</span>
                   </div>
                   <ChevronRight className="w-4 h-4 opacity-40" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('invitations');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`flex items-center justify-between p-3 rounded-2xl transition-all ${
+                    activeTab === 'invitations'
+                      ? 'bg-neutral-900 text-white font-medium shadow-xs'
+                      : 'bg-neutral-50 hover:bg-neutral-100 text-neutral-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span className="text-xs font-semibold">Invitations & QR Passes</span>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === 'invitations' ? 'bg-white/20 text-white' : 'bg-neutral-200/70 text-neutral-600'}`}>
+                    65
+                  </span>
                 </button>
               </div>
             </div>
