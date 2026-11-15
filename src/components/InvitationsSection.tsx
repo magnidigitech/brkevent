@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Search,
@@ -13,12 +13,9 @@ import {
   Check,
   Copy,
   Building2,
-  RefreshCw,
-  UploadCloud,
   Share2,
-  Send,
   Globe,
-  ImageIcon
+  ImageIcon,
 } from 'lucide-react';
 import { PartyBadge } from '@/components/PartyBadge';
 import { CandidateAvatar } from '@/components/CandidateAvatar';
@@ -82,12 +79,6 @@ export function InvitationsSection() {
     };
   }, [previewWard]);
 
-  // Sync / Regeneration state
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const [cacheBuster, setCacheBuster] = useState<number>(Date.now());
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const corporators = WINNING_CORPORATORS as WinningCorporator[];
 
   // Filtered corporators based on search query and party
@@ -126,23 +117,13 @@ export function InvitationsSection() {
     };
   }, [corporators]);
 
-  const getCloudImageUrl = (ward: number) => {
-    return `${SUPABASE_CDN_BASE}/${ward}.jpg?v=${cacheBuster}`;
-  };
-
-  const getCloudQrUrl = (ward: number) => {
-    return `${SUPABASE_CDN_BASE}/qr/${ward}.png?v=${cacheBuster}`;
-  };
-
   const handleCopyPassLink = async (ward: number) => {
     const url = `https://event.bhashyamramakrishna.in/ward${ward}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedWard(ward);
       setTimeout(() => setCopiedWard(null), 2000);
-    } catch {
-      // fallback
-    }
+    } catch {}
   };
 
   const handleCopyCloudImageUrl = async (ward: number) => {
@@ -151,9 +132,7 @@ export function InvitationsSection() {
       await navigator.clipboard.writeText(url);
       setCopiedCloudUrlWard(ward);
       setTimeout(() => setCopiedCloudUrlWard(null), 2000);
-    } catch {
-      // fallback
-    }
+    } catch {}
   };
 
   const handleShareWhatsApp = (corporator: WinningCorporator) => {
@@ -170,66 +149,9 @@ export function InvitationsSection() {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const handleRegenerateAll = async () => {
-    if (isProcessing) return;
-    setIsProcessing(true);
-    setStatusMessage({ text: 'Regenerating 65 invitations and syncing to cloud storage...', type: 'info' });
-
-    try {
-      const res = await fetch('/api/invitations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'regenerate' }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCacheBuster(Date.now());
-        setStatusMessage({ text: data.message || 'All invitations regenerated and synced online!', type: 'success' });
-      } else {
-        setStatusMessage({ text: data.message || 'Failed to regenerate invitations', type: 'error' });
-      }
-    } catch (err: any) {
-      setStatusMessage({ text: err?.message || 'Error executing regeneration', type: 'error' });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleTemplateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsProcessing(true);
-    setStatusMessage({ text: `Uploading new template (${file.name}), regenerating and syncing online...`, type: 'info' });
-
-    try {
-      const formData = new FormData();
-      formData.append('action', 'update_template');
-      formData.append('file', file);
-
-      const res = await fetch('/api/invitations', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setCacheBuster(Date.now());
-        setStatusMessage({ text: data.message || 'Template updated, regenerated and synced online!', type: 'success' });
-      } else {
-        setStatusMessage({ text: data.message || 'Failed to update template', type: 'error' });
-      }
-    } catch (err: any) {
-      setStatusMessage({ text: err?.message || 'Error updating template', type: 'error' });
-    } finally {
-      setIsProcessing(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Top Banner Summary & Controls */}
+      {/* Top Banner Summary & Quick Actions */}
       <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent border border-amber-500/20 rounded-3xl p-5 sm:p-6 shadow-2xs">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
           <div className="space-y-1.5">
@@ -241,68 +163,32 @@ export function InvitationsSection() {
               64 Winning Corporators
             </h2>
             <p className="text-xs sm:text-sm text-neutral-600 max-w-xl">
-              High-resolution 300 DPI Telugu invitation cards and verified Entry Pass QR codes generated for the 64 election-winning divisions. Stored online on cloud CDN for remote team sharing.
+              High-resolution final invitation cards for the 64 election-winning divisions. Download high-resolution JPEG, QR code, or share directly on WhatsApp.
             </p>
           </div>
 
-          {/* Action Buttons for Template Update and Regeneration */}
+          {/* Quick Actions */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleTemplateUpload}
-              accept=".png,.jpg,.jpeg,.pdf"
-              className="hidden"
-            />
-
-            <button
-              type="button"
-              disabled={isProcessing}
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white hover:bg-neutral-50 text-neutral-800 text-xs font-bold border border-neutral-300/80 shadow-2xs transition-all active:scale-[0.98] disabled:opacity-50"
+            <a
+              href="/invitations/BRK_All_Invitations_64_Wards.zip"
+              download="BRK_All_Invitations_64_Wards.zip"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold shadow-2xs transition-all active:scale-[0.98]"
             >
-              <UploadCloud className="w-4 h-4 text-neutral-600" />
-              <span>Update Template (PDF/PNG)</span>
-            </button>
+              <Download className="w-4 h-4 text-white" />
+              <span>Download All 64 Cards (.ZIP)</span>
+            </a>
 
-            <button
-              type="button"
-              disabled={isProcessing}
-              onClick={handleRegenerateAll}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold shadow-2xs transition-all active:scale-[0.98] disabled:opacity-50"
+            <a
+              href={`${SUPABASE_CDN_BASE}/BRK_All_Invitations_64_Wards.zip`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white hover:bg-neutral-50 text-neutral-800 text-xs font-bold border border-neutral-300/80 shadow-2xs transition-all active:scale-[0.98]"
             >
-              <RefreshCw className={`w-4 h-4 text-white ${isProcessing ? 'animate-spin' : ''}`} />
-              <span>{isProcessing ? 'Processing...' : 'Regenerate All & Cloud Sync'}</span>
-            </button>
+              <Globe className="w-4 h-4 text-emerald-600" />
+              <span>Cloud CDN Active</span>
+            </a>
           </div>
         </div>
-
-        {/* Status notification banner if active */}
-        {statusMessage && (
-          <div
-            className={`mt-4 p-3.5 rounded-2xl text-xs font-medium flex items-center justify-between gap-3 border ${
-              statusMessage.type === 'success'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : statusMessage.type === 'error'
-                ? 'bg-red-50 border-red-200 text-red-800'
-                : 'bg-amber-50 border-amber-200 text-amber-800'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {statusMessage.type === 'info' && <RefreshCw className="w-4 h-4 animate-spin text-amber-600 shrink-0" />}
-              {statusMessage.type === 'success' && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
-              {statusMessage.type === 'error' && <X className="w-4 h-4 text-red-600 shrink-0" />}
-              <span>{statusMessage.text}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setStatusMessage(null)}
-              className="text-neutral-400 hover:text-neutral-600 p-0.5"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Search & Party Filter Bar */}
@@ -359,40 +245,39 @@ export function InvitationsSection() {
         </div>
       </div>
 
-      {/* Grid of Invitations */}
+      {/* Cards Grid */}
       {filteredCorporators.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-neutral-200/80 rounded-3xl p-8">
-          <Building2 className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
-          <h3 className="text-sm font-semibold text-neutral-900">No matching invitations found</h3>
-          <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
-            Try adjusting your search terms or clearing party filters.
-          </p>
+        <div className="p-12 text-center bg-white rounded-3xl border border-neutral-200/80 shadow-2xs">
+          <Building2 className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
+          <h3 className="text-base font-semibold text-neutral-800">No invitations found</h3>
+          <p className="text-xs text-neutral-500 mt-1">Try adjusting your search query or party filter</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filteredCorporators.map((c) => (
             <div
               key={c.ward}
-              className="bg-white border border-neutral-200/90 rounded-3xl p-4 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)] transition-all duration-200 group"
+              className="group bg-white rounded-3xl border border-neutral-200/80 hover:border-neutral-300 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
-              <div>
-                {/* Header: Division + Avatar + Party */}
+              {/* Card Header & Thumbnail */}
+              <div className="p-4 sm:p-5 flex-1">
+                {/* Ward and Party Badges */}
                 <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <CandidateAvatar wardNumber={c.ward} candidateName={c.nameEn} size="sm" />
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-neutral-900 text-white tracking-tight">
+                    <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-neutral-900 text-white tracking-tight">
                       Div {c.ward}
                     </span>
                   </div>
                   <PartyBadge party={c.party} size="sm" />
                 </div>
 
-                {/* Names */}
+                {/* Candidate Name */}
                 <div className="mb-3">
-                  <h4 className="text-base font-bold text-neutral-900 line-clamp-1" title={c.nameTe}>
+                  <h3 className="text-base font-bold text-neutral-900 leading-tight tracking-tight">
                     {c.nameTe}
-                  </h4>
-                  <p className="text-xs text-neutral-500 line-clamp-1 font-medium mt-0.5" title={c.nameEn}>
+                  </h3>
+                  <p className="text-xs text-neutral-500 font-medium mt-0.5">
                     {c.nameEn}
                   </p>
                 </div>
@@ -403,7 +288,7 @@ export function InvitationsSection() {
                   className="relative aspect-[4/5] w-full rounded-2xl overflow-hidden border border-neutral-200/80 bg-neutral-100 cursor-pointer shadow-2xs group-hover:border-neutral-300 transition-colors"
                 >
                   <img
-                    src={`/invitations/${c.ward}.jpg?v=${cacheBuster}`}
+                    src={`/invitations/${c.ward}.jpg`}
                     alt={`Invitation card for Division ${c.ward}`}
                     loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
@@ -419,7 +304,7 @@ export function InvitationsSection() {
               </div>
 
               {/* Actions Footer */}
-              <div className="mt-4 pt-3 border-t border-neutral-100 flex flex-col gap-2">
+              <div className="mt-4 pt-3 border-t border-neutral-100 flex flex-col gap-2 p-4 pt-0">
                 <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
@@ -433,8 +318,8 @@ export function InvitationsSection() {
                   <a
                     href={`/invitations/${c.ward}.jpg`}
                     download={`Invitation_Division_${c.ward}_${c.nameEn.replace(/\s+/g, '_')}.jpg`}
-                    title="Download High-Resolution Invitation JPEG (300 DPI)"
-                    className="inline-flex items-center justify-center p-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition-colors"
+                    className="inline-flex items-center justify-center p-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-colors"
+                    title="Download Invitation Card (JPEG)"
                   >
                     <Download className="w-4 h-4" />
                   </a>
@@ -442,38 +327,37 @@ export function InvitationsSection() {
                   <a
                     href={`/invitations/qr/${c.ward}.png`}
                     download={`QR_Division_${c.ward}.png`}
-                    title="Download Entry Pass QR Code"
-                    className="inline-flex items-center justify-center p-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition-colors"
+                    className="inline-flex items-center justify-center p-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-colors"
+                    title="Download QR Code (PNG)"
                   >
                     <QrCode className="w-4 h-4" />
                   </a>
 
-                  <Link
+                  <a
                     href={`/ward${c.ward}`}
                     target="_blank"
-                    title="Open Digital Pass Link"
-                    className="inline-flex items-center justify-center p-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 transition-colors"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center p-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-colors"
+                    title="Open Digital Pass URL"
                   >
                     <ExternalLink className="w-4 h-4" />
-                  </Link>
+                  </a>
                 </div>
 
-                {/* Cloud Share & WhatsApp Bar */}
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleCopyCloudImageUrl(c.ward)}
-                    title="Copy Public Online Image Link (for remote sharing)"
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-[11px] font-semibold transition-all"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-medium transition-colors"
                   >
                     {copiedCloudUrlWard === c.ward ? (
                       <>
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        <span className="text-emerald-700">Link Copied!</span>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="text-emerald-700 font-semibold">Copied URL</span>
                       </>
                     ) : (
                       <>
-                        <Globe className="w-3 h-3 text-neutral-500" />
+                        <Globe className="w-3.5 h-3.5 text-neutral-500" />
                         <span>Copy Image URL</span>
                       </>
                     )}
@@ -482,10 +366,9 @@ export function InvitationsSection() {
                   <button
                     type="button"
                     onClick={() => handleShareWhatsApp(c)}
-                    title="Share invitation image and pass on WhatsApp"
-                    className="inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold transition-all shadow-2xs"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shadow-2xs"
                   >
-                    <Send className="w-3 h-3" />
+                    <Share2 className="w-3.5 h-3.5" />
                     <span>WhatsApp</span>
                   </button>
                 </div>
@@ -534,33 +417,35 @@ export function InvitationsSection() {
               </button>
             </div>
 
-            {/* Modal Image Area */}
-            <div className="p-4 sm:p-6 bg-neutral-950 flex items-center justify-center overflow-auto flex-1">
-              <img
-                src={`/invitations/${previewWard.ward}.jpg?v=${cacheBuster}`}
-                alt={`Invitation Division ${previewWard.ward}`}
-                className="max-h-[65vh] w-auto rounded-xl shadow-lg border border-neutral-800 object-contain"
-              />
+            {/* Modal Body: High Res Card Image */}
+            <div className="p-4 sm:p-6 bg-neutral-100/50 overflow-y-auto flex items-center justify-center">
+              <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-neutral-200/80">
+                <img
+                  src={`/invitations/${previewWard.ward}.jpg`}
+                  alt={`Invitation Division ${previewWard.ward}`}
+                  className="w-full h-auto object-contain"
+                />
+              </div>
             </div>
 
-            {/* Modal Footer Actions */}
+            {/* Modal Footer: Action Buttons */}
             <div className="p-4 sm:p-5 border-t border-neutral-100 bg-white flex flex-col gap-3">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2 flex-1">
                   <button
                     type="button"
                     onClick={() => handleCopyCloudImageUrl(previewWard.ward)}
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 py-2.5 px-3.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-semibold transition-all"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-semibold transition-colors"
                   >
                     {copiedCloudUrlWard === previewWard.ward ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="text-emerald-700">Image URL Copied!</span>
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        <span className="text-emerald-700">Copied Public CDN URL!</span>
                       </>
                     ) : (
                       <>
-                        <Globe className="w-3.5 h-3.5 text-neutral-600" />
-                        <span>Copy Public Image URL</span>
+                        <Copy className="w-4 h-4 text-neutral-600" />
+                        <span>Copy Image URL</span>
                       </>
                     )}
                   </button>
@@ -568,9 +453,9 @@ export function InvitationsSection() {
                   <button
                     type="button"
                     onClick={() => handleShareWhatsApp(previewWard)}
-                    className="inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-all shadow-2xs"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shadow-2xs"
                   >
-                    <Send className="w-3.5 h-3.5" />
+                    <Share2 className="w-4 h-4" />
                     <span>WhatsApp</span>
                   </button>
                 </div>
@@ -579,29 +464,29 @@ export function InvitationsSection() {
                   <a
                     href={`/invitations/qr/${previewWard.ward}.png`}
                     download={`QR_Division_${previewWard.ward}.png`}
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-900 text-xs font-semibold transition-all"
+                    className="inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-semibold transition-colors"
                   >
-                    <QrCode className="w-3.5 h-3.5" />
-                    <span>QR Code</span>
+                    <QrCode className="w-4 h-4" />
+                    <span className="hidden sm:inline">QR Code</span>
                   </a>
 
                   <a
                     href={`/invitations/${previewWard.ward}.jpg`}
                     download={`Invitation_Division_${previewWard.ward}_${previewWard.nameEn.replace(/\s+/g, '_')}.jpg`}
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 py-2.5 px-5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold transition-all shadow-sm"
+                    className="inline-flex items-center gap-1.5 py-2.5 px-4 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold transition-colors shadow-2xs"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Download JPEG (300 DPI)</span>
+                    <span>Download Card</span>
                   </a>
                 </div>
               </div>
 
               {/* Public CDN Direct link preview */}
-              <div className="text-[11px] text-neutral-500 bg-neutral-50 p-2.5 rounded-xl border border-neutral-200/60 flex items-center justify-between gap-2 overflow-hidden">
-                <span className="truncate">
-                  <strong className="text-neutral-700 font-semibold">Online CDN URL:</strong> {SUPABASE_CDN_BASE}/{previewWard.ward}.jpg
+              <div className="text-[11px] text-neutral-400 bg-neutral-50 px-3 py-1.5 rounded-xl border border-neutral-100 truncate">
+                <span className="font-semibold text-neutral-600">Online CDN URL:</span>{' '}
+                <span className="select-all font-mono text-[10px] text-neutral-500">
+                  {SUPABASE_CDN_BASE}/{previewWard.ward}.jpg
                 </span>
-                <span className="text-emerald-700 font-semibold shrink-0">Live & Public</span>
               </div>
             </div>
           </div>
