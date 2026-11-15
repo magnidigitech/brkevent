@@ -30,9 +30,10 @@ export function Header() {
 
     // Fetch logged in profile
     fetch('/api/auth/profile')
-      .then((res) => res.json())
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data.user) setProfile(data.user);
+        const userProf = data?.profile || data?.user;
+        if (userProf) setProfile(userProf);
       })
       .catch(() => {});
 
@@ -106,22 +107,20 @@ export function Header() {
               }`}
             >
               <QrCode className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Scanner</span>
+              <span>Scanner</span>
             </Link>
 
-            {isAdmin && (
-              <Link
-                href="/dashboard"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-[0.98] ${
-                  pathname?.startsWith('/dashboard')
-                    ? 'bg-neutral-900 text-white shadow-xs'
-                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
-                }`}
-              >
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">Dashboard</span>
-              </Link>
-            )}
+            <Link
+              href="/dashboard"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-[0.98] ${
+                pathname?.startsWith('/dashboard')
+                  ? 'bg-neutral-900 text-white shadow-xs'
+                  : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+              }`}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
+            </Link>
 
             {/* Staff Role Badge & Logout */}
             <div className="flex items-center gap-2 pl-2 sm:pl-3 ml-1 border-l border-neutral-200">
