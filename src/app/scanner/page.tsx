@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QRScanner } from '@/components/QRScanner';
 import { WardEntryCard } from '@/components/WardEntryCard';
@@ -22,16 +23,16 @@ export default function ScannerPage() {
         if (data?.authenticated && data?.profile) {
           setUserProfile(data.profile);
         } else {
-          router.replace('/login?returnUrl=/scanner');
+          window.location.href = '/login';
         }
       })
       .catch(() => {
-        router.replace('/login?returnUrl=/scanner');
+        window.location.href = '/login';
       })
       .finally(() => {
         setCheckingAuth(false);
       });
-  }, [router]);
+  }, []);
 
   const handleWardScanned = (wardNumber: number) => {
     setSelectedWardNumber(wardNumber);
@@ -83,12 +84,12 @@ export default function ScannerPage() {
         <p className="text-xs text-neutral-500 mt-1 mb-4 text-center">
           Please sign in to access the invitation scanner.
         </p>
-        <button
-          onClick={() => router.replace('/login?returnUrl=/scanner')}
+        <Link
+          href="/login"
           className="px-4 py-2 rounded-xl bg-neutral-900 text-white text-xs font-medium hover:bg-neutral-800 active:scale-95 transition-all"
         >
           Go to Sign In
-        </button>
+        </Link>
       </div>
     );
   }
