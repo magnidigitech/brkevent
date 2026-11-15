@@ -33,7 +33,7 @@ function LoginForm() {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [enableBiometricOnLogin, setEnableBiometricOnLogin] = useState<boolean>(true);
+  const [enableBiometricOnLogin, setEnableBiometricOnLogin] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [biometricLoading, setBiometricLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -41,6 +41,18 @@ function LoginForm() {
   // Biometric state
   const [biometricSupported, setBiometricSupported] = useState<boolean>(false);
   const [savedBiometric, setSavedBiometric] = useState<StoredBiometric | null>(null);
+
+  // If already logged in, redirect immediately to target page using replace so /login is not kept in history
+  useEffect(() => {
+    fetch('/api/auth/profile')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.authenticated && data?.profile) {
+          window.location.replace(returnUrl);
+        }
+      })
+      .catch(() => {});
+  }, [returnUrl]);
 
   // Check WebAuthn support on mount
   useEffect(() => {
@@ -111,8 +123,8 @@ function LoginForm() {
         throw new Error(data.message || 'Biometric authentication failed.');
       }
 
-      // Hard redirect to returnUrl to guarantee cookie propagation and state refresh
-      window.location.href = returnUrl;
+      // Hard redirect with replace to returnUrl to guarantee cookie propagation and remove /login from history
+      window.location.replace(returnUrl);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Biometric sign-in failed.';
       setErrorMsg(msg);
@@ -181,7 +193,7 @@ function LoginForm() {
     const submitPassword = password;
 
     if (!submitEmail || !submitPassword) {
-      setErrorMsg('Please enter both your email address and password.');
+      setErrorMsg('Please enter both your email address/username and password.');
       setLoading(false);
       return;
     }
@@ -198,15 +210,17 @@ function LoginForm() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Invalid email address or password.');
+        throw new Error(data.message || 'Invalid username or password.');
       }
 
       if (enableBiometricOnLogin && biometricSupported) {
-        registerBiometricForDevice(submitEmail).catch(() => {});
+        try {
+          await registerBiometricForDevice(submitEmail);
+        } catch {}
       }
 
-      // Hard redirect to returnUrl to guarantee cookie propagation and state refresh
-      window.location.href = returnUrl;
+      // Hard redirect with replace to remove /login from session history stack
+      window.location.replace(returnUrl);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed.';
       setErrorMsg(msg);
@@ -284,14 +298,18 @@ function LoginForm() {
       <form onSubmit={handleSubmit} className="px-6 pb-7 flex flex-col gap-4">
         <div>
           <label className="block text-xs font-medium text-neutral-600 mb-1.5">
-            Email Address
+            Staff Username or Email
           </label>
           <div className="relative">
             <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
             <input
-              type="email"
+              type="text"
               required
               autoFocus
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck="false"
+              placeholder="e.g. admin or scanner1"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 text-sm bg-neutral-50/80 hover:bg-neutral-50 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-neutral-900 outline-none"

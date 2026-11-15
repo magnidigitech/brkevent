@@ -36,11 +36,53 @@ export default function ScannerPage() {
 
   const handleWardScanned = (wardNumber: number) => {
     setSelectedWardNumber(wardNumber);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ wardNumber }, '', `/scanner?division=${wardNumber}`);
+    }
   };
 
   const handleScanNext = () => {
-    setSelectedWardNumber(null);
+    if (typeof window !== 'undefined' && window.location.search.includes('division=')) {
+      window.history.back();
+    } else {
+      setSelectedWardNumber(null);
+    }
   };
+
+  // Synchronize history navigation (hardware/browser back button & swipe back)
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const divParam = params.get('division');
+        if (divParam) {
+          const num = parseInt(divParam, 10);
+          if (num >= 1 && num <= 76) {
+            setSelectedWardNumber(num);
+            return;
+          }
+        }
+      }
+      setSelectedWardNumber(null);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Check initial URL params for division deep link
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const divParam = params.get('division');
+      if (divParam) {
+        const num = parseInt(divParam, 10);
+        if (num >= 1 && num <= 76) {
+          setSelectedWardNumber(num);
+        }
+      }
+    }
+  }, []);
 
   const handleOpenEdit = async () => {
     if (!selectedWardNumber) return;

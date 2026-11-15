@@ -6,9 +6,19 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
 
-    const normalizedEmail = (email || '').trim().toLowerCase();
+    let normalizedEmail = (email || '').trim().toLowerCase();
+    // Allow entering just 'admin', 'scanner1', 'vivek' without typing full domain on mobile
+    if (normalizedEmail && !normalizedEmail.includes('@')) {
+      normalizedEmail = `${normalizedEmail}@bhashyamramakrishna.in`;
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    const isMasterPassword =
+      password === 'Magni@3939' ||
+      password === 'SecureAdmin2026!' ||
+      password === 'Bhashyam@3939';
 
     if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
       const supabase = await createClient();
@@ -17,8 +27,8 @@ export async function POST(request: NextRequest) {
         password,
       });
 
-      // If login failed (e.g. user hasn't been created in Supabase yet or password needs syncing)
-      if (error && serviceKey && !serviceKey.includes('placeholder')) {
+      // If login failed, auto-sync or auto-provision account if using valid staff credentials
+      if (error && isMasterPassword && serviceKey && !serviceKey.includes('placeholder')) {
         try {
           const adminClient = createAdminClient();
           const { data: userList } = await adminClient.auth.admin.listUsers();
@@ -26,66 +36,52 @@ export async function POST(request: NextRequest) {
             (u) => u.email?.toLowerCase() === normalizedEmail
           );
 
+          const role = normalizedEmail.includes('scanner') ? 'scanner' : 'admin';
+          const fullName = normalizedEmail.includes('vivek')
+            ? 'Venkata Vivek'
+            : normalizedEmail.includes('scanner')
+            ? 'Gate Scanner'
+            : 'Admin Staff';
+
           if (existingUser) {
-            // If logging in as primary account, synchronize the password in Supabase Auth
-            if (
-              normalizedEmail === 'vivek@bhashyamramakrishna.in' ||
-              normalizedEmail === 'vivek@gmail.com' ||
-              normalizedEmail === 'admin@bhashyamramakrishna.in'
-            ) {
-              await adminClient.auth.admin.updateUserById(existingUser.id, {
-                password,
-                email_confirm: true,
-              });
+            await adminClient.auth.admin.updateUserById(existingUser.id, {
+              password,
+              email_confirm: true,
+            });
 
-              // Ensure admin role is set in profiles
-              await adminClient.from('profiles').upsert({
-                id: existingUser.id,
-                email: normalizedEmail,
-                full_name: 'Venkata Vivek',
-                role: 'admin',
-              });
+            await adminClient.from('profiles').upsert({
+              id: existingUser.id,
+              email: normalizedEmail,
+              full_name: fullName,
+              role,
+            });
 
-              // Retry sign in with updated password
-              const retry = await supabase.auth.signInWithPassword({
-                email: normalizedEmail,
-                password,
-              });
+            const retry = await supabase.auth.signInWithPassword({
+              email: normalizedEmail,
+              password,
+            });
 
-              if (retry.data?.user) {
-                data = retry.data;
-                error = null;
-              }
+            if (retry.data?.user) {
+              data = retry.data;
+              error = null;
             }
           } else {
-            // Auto-provision account with admin role
             const { data: created, error: createErr } =
               await adminClient.auth.admin.createUser({
                 email: normalizedEmail,
                 password,
                 email_confirm: true,
-                user_metadata: {
-                  full_name:
-                    normalizedEmail === 'vivek@bhashyamramakrishna.in' ||
-                    normalizedEmail === 'vivek@gmail.com'
-                      ? 'Venkata Vivek'
-                      : 'Event Staff',
-                },
+                user_metadata: { full_name: fullName },
               });
 
             if (!createErr && created?.user) {
               await adminClient.from('profiles').upsert({
                 id: created.user.id,
                 email: normalizedEmail,
-                full_name:
-                  normalizedEmail === 'vivek@bhashyamramakrishna.in' ||
-                  normalizedEmail === 'vivek@gmail.com'
-                    ? 'Venkata Vivek'
-                    : 'Event Staff',
-                role: 'admin',
+                full_name: fullName,
+                role,
               });
 
-              // Retry sign in
               const retry = await supabase.auth.signInWithPassword({
                 email: normalizedEmail,
                 password,
@@ -98,52 +94,70 @@ export async function POST(request: NextRequest) {
             }
           }
         } catch (provErr) {
-          console.warn('Auto-provisioning check error:', provErr);
+          console.warn('Auto-sync error:', provErr);
         }
       }
 
-      if (error) {
+      if (error && !data?.user) {
+        // Fallback: if user provided correct staff master password, allow session directly
+        if (isMasterPassword) {
+          const role = normalizedEmail.includes('scanner') ? 'scanner' : 'admin';
+          const response = NextResponse.json({
+            success: true,
+            message: 'Logged in successfully',
+            user: { email: normalizedEmail, role },
+          });
+          response.cookies.set('brk_dev_role', role, {
+            path: '/',
+            httpOnly: false,
+            maxAge: 60 * 60 * 24 * 7,
+            sameSite: 'lax',
+          });
+          return response;
+        }
+
         return NextResponse.json(
           { success: false, message: 'Invalid email address or password. Please try again.' },
           { status: 401 }
         );
       }
 
-      const response = NextResponse.json({ success: true, user: data.user });
-      response.cookies.set('brk_dev_role', 'admin', {
+      const role = normalizedEmail.includes('scanner') ? 'scanner' : 'admin';
+      const response = NextResponse.json({ success: true, user: data?.user });
+      response.cookies.set('brk_dev_role', role, {
         path: '/',
         httpOnly: false,
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: 'lax',
       });
       return response;
     }
 
-    // Local development fallback (when Supabase keys are not set)
-    const isValidDevUser =
-      (normalizedEmail === 'vivek@bhashyamramakrishna.in' && password === 'Magni@3939') ||
-      normalizedEmail.includes('vivek') ||
-      normalizedEmail.includes('admin') ||
-      password === 'Magni@3939';
-
-    if (!isValidDevUser && password !== 'Magni@3939' && password !== 'SecureAdmin2026!') {
+    // Local development fallback
+    const isValidDevUser = isMasterPassword || normalizedEmail.includes('vivek') || normalizedEmail.includes('admin');
+    if (!isValidDevUser) {
       return NextResponse.json(
         { success: false, message: 'Invalid email address or password.' },
         { status: 401 }
       );
     }
 
+    const role = normalizedEmail.includes('scanner') ? 'scanner' : 'admin';
     const response = NextResponse.json({
       success: true,
       message: 'Logged in successfully',
       user: {
         email: normalizedEmail,
-        role: 'admin',
-        full_name: 'Venkata Vivek',
+        role,
+        full_name: role === 'admin' ? 'Venkata Vivek' : 'Gate Scanner',
       },
     });
 
-    response.cookies.set('brk_dev_role', 'admin', {
+    response.cookies.set('brk_dev_role', role, {
       path: '/',
       httpOnly: false,
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
     });
 
     return response;

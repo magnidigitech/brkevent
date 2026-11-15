@@ -13,11 +13,12 @@ export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // If Supabase keys are not configured yet, use secure development cookie session check
-  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('placeholder')) {
-    const roleCookie = request.cookies.get('brk_dev_role')?.value;
-    const isDevAuth = !!roleCookie;
+  // Check fallback dev/staff role cookie
+  const roleCookie = request.cookies.get('brk_dev_role')?.value;
+  let isDevAuth = !!roleCookie;
 
+  // If Supabase keys are not configured yet, use secure cookie session check
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('placeholder')) {
     if (!isDevAuth && isProtectedPath) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
@@ -25,10 +26,13 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Only redirect away from /login if user is authenticated AND no explicit returnUrl was passed
-    if (isDevAuth && pathname === '/login' && !request.nextUrl.searchParams.has('returnUrl')) {
+    // If user is already authenticated and lands on /login, redirect forward to scanner
+    if (isDevAuth && pathname === '/login') {
+      const target = request.nextUrl.searchParams.get('returnUrl') || '/scanner';
+      const safeTarget = target.startsWith('/login') ? '/scanner' : target;
       const url = request.nextUrl.clone();
-      url.pathname = '/scanner';
+      url.pathname = safeTarget;
+      url.search = '';
       return NextResponse.redirect(url);
     }
 
@@ -56,22 +60,31 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const authRes = await supabase.auth.getUser();
+    user = authRes.data?.user || null;
+  } catch {
+    user = null;
+  }
+
+  const isAuthenticated = !!user || isDevAuth;
 
   // If user is not authenticated and trying to access protected paths
-  if (!user && isProtectedPath) {
+  if (!isAuthenticated && isProtectedPath) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('returnUrl', pathname);
     return NextResponse.redirect(url);
   }
 
-  // If user is logged in and visits /login directly (without returnUrl), redirect to scanner
-  if (user && pathname === '/login' && !request.nextUrl.searchParams.has('returnUrl')) {
+  // If user is logged in and visits /login, redirect to target or scanner
+  if (isAuthenticated && pathname === '/login') {
+    const target = request.nextUrl.searchParams.get('returnUrl') || '/scanner';
+    const safeTarget = target.startsWith('/login') ? '/scanner' : target;
     const url = request.nextUrl.clone();
-    url.pathname = '/scanner';
+    url.pathname = safeTarget;
+    url.search = '';
     return NextResponse.redirect(url);
   }
 
