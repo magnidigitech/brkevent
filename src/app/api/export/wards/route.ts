@@ -9,7 +9,7 @@ export async function GET() {
     const wards = await getAllWards();
 
     const headers = [
-      'Ward Number',
+      'Division Number',
       'Principal Invitee Name',
       'Party',
       'Allowance',
@@ -41,7 +41,7 @@ export async function GET() {
     ]);
 
     const csv = generateCsv(headers, rows);
-    const filename = `brk-event-ward-summary-${new Date().toISOString().split('T')[0]}.csv`;
+    const filename = `brk-event-division-summary-${new Date().toISOString().split('T')[0]}.csv`;
 
     return new NextResponse('\uFEFF' + csv, {
       status: 200,

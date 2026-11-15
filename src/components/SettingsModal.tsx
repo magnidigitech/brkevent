@@ -301,7 +301,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                   <div className="flex flex-wrap gap-1.5">
                     {[
                       { tag: '{name}', label: 'Invitee Name' },
-                      { tag: '{ward}', label: 'Ward #' },
+                      { tag: '{division}', label: 'Division #' },
                       { tag: '{party}', label: 'Party' },
                       { tag: '{allowance}', label: 'Allowance (5)' },
                       { tag: '{url}', label: 'Pass URL' },
@@ -357,7 +357,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             /* Live WhatsApp Preview */
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-bold text-slate-700">Sample Ward: Ward 31 ({SAMPLE_WARD.candidate_name})</span>
+                <span className="font-bold text-slate-700">Sample Division: Division 31 ({SAMPLE_WARD.candidate_name})</span>
                 <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
                   WhatsApp Preview
                 </span>

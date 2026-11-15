@@ -87,12 +87,12 @@ export function WardEntryCard({
       const res = await fetch(`/api/wards/${wardNumber}`);
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Failed to load ward invitation.');
+        throw new Error(data.message || 'Failed to load division invitation.');
       }
       setWard(data.ward);
     } catch (err: unknown) {
       if (!ward) {
-        const msg = err instanceof Error ? err.message : 'Error loading ward details.';
+        const msg = err instanceof Error ? err.message : 'Error loading division details.';
         setFetchError(msg);
       }
     } finally {
@@ -200,7 +200,7 @@ export function WardEntryCard({
     return (
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex flex-col items-center justify-center gap-3">
         <RefreshCw className="w-8 h-8 text-amber-500 animate-spin" />
-        <p className="text-sm font-medium text-slate-600">Loading Ward {wardNumber} details...</p>
+        <p className="text-sm font-medium text-slate-600">Loading Division {wardNumber} details...</p>
       </div>
     );
   }
@@ -209,8 +209,8 @@ export function WardEntryCard({
     return (
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center">
         <ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" />
-        <h3 className="text-lg font-bold text-slate-900">Ward Not Found</h3>
-        <p className="text-sm text-slate-600 mt-1">{fetchError || 'Unable to retrieve ward details.'}</p>
+        <h3 className="text-lg font-bold text-slate-900">Division Not Found</h3>
+        <p className="text-sm text-slate-600 mt-1">{fetchError || 'Unable to retrieve division details.'}</p>
         <button
           onClick={onScanNext}
           className="mt-5 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition"
@@ -236,7 +236,7 @@ export function WardEntryCard({
                 Attendance Recorded Successfully!
               </h3>
               <p className="text-xs sm:text-sm text-emerald-800 mt-1">
-                Recorded {successResponse.batch_size} {successResponse.batch_size === 1 ? 'person' : 'people'} for Ward {ward.ward_number}.
+                Recorded {successResponse.batch_size} {successResponse.batch_size === 1 ? 'person' : 'people'} for Division {ward.ward_number}.
                 {successResponse.duplicate_request && ' (Idempotent confirmation)'}
               </p>
               <div className="mt-2 text-xs font-semibold bg-emerald-100 text-emerald-900 px-3 py-1.5 rounded-lg inline-block">
@@ -259,7 +259,7 @@ export function WardEntryCard({
         </div>
       )}
 
-      {/* MAIN WARD INVITATION CARD */}
+      {/* MAIN DIVISION INVITATION CARD */}
       <div className="bg-white rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.06)] border border-black/[0.06] overflow-hidden">
         {/* Card Header: Refined Apple aesthetic with party badge & squircle */}
         <div className="px-6 py-5 flex items-center justify-between border-b border-black/[0.06] bg-white">
@@ -280,7 +280,7 @@ export function WardEntryCard({
                 Official Invitation
               </span>
               <h2 className="text-xl sm:text-2xl font-semibold text-neutral-900 tracking-tight leading-snug">
-                Ward {ward.ward_number}
+                Division {ward.ward_number}
               </h2>
             </div>
           </div>
@@ -399,7 +399,7 @@ export function WardEntryCard({
             <div className="mt-3.5 flex items-center gap-2 text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200/80 px-3.5 py-2.5 rounded-xl">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>
-                Ward has already exceeded the 5-person allowance by {ward.excess_count} people.
+                Division has already exceeded the 5-person allowance by {ward.excess_count} people.
               </span>
             </div>
           )}
@@ -407,7 +407,7 @@ export function WardEntryCard({
           {isAtOrExceeded && !isOverAllowance && (
             <div className="mt-3.5 flex items-center gap-2 text-xs font-medium text-amber-900 bg-amber-50 border border-amber-200/80 px-3.5 py-2.5 rounded-xl">
               <UserCheck className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Ward has reached its exact 5-person allowance.</span>
+              <span>Division has reached its exact 5-person allowance.</span>
             </div>
           )}
         </div>
@@ -608,7 +608,7 @@ export function WardEntryCard({
             className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Scan Another Ward</span>
+            <span>Scan Another Division</span>
           </button>
 
           <span className="text-[11px] text-neutral-400 font-mono">

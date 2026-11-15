@@ -240,7 +240,7 @@ export default function DashboardPage() {
     // If more than 2 digits (3+ digits, e.g. "98851", "4343"), check against phone numbers.
     const allowPhoneSearch = digitCount > 2;
 
-    const wardPrefixMatch = q.match(/^(?:w|ward)[ -]?(\d{1,2})$/i);
+    const wardPrefixMatch = q.match(/^(?:w|ward|d|div|division)[ -]?(\d{1,2})$/i);
     const targetWardNum = isPureDigits
       ? parseInt(q, 10)
       : wardPrefixMatch
@@ -249,20 +249,21 @@ export default function DashboardPage() {
 
     const matches = wards.filter((w) => {
       if (q) {
-        const wardNumStr = w.ward_number?.toString() || '';
-        const matchExactWard = targetWardNum !== null && w.ward_number === targetWardNum;
-        const matchPrefixWard = isPureDigits && wardNumStr.startsWith(q);
-        const matchWardNo =
-          matchExactWard ||
-          matchPrefixWard ||
-          `ward ${w.ward_number}`.includes(q) ||
-          `w-${w.ward_number}`.includes(q) ||
-          `w${w.ward_number}`.includes(q);
-        const matchName = w.candidate_name ? w.candidate_name.toLowerCase().includes(q) : false;
-        const matchParty = w.party ? w.party.toLowerCase().includes(q) : false;
+        let matchWardNo = false;
+        if (targetWardNum !== null) {
+          // Single and double digit numbers match EXACT division only (e.g. "1" matches Division 1 only, never 10, 11, etc.)
+          matchWardNo = w.ward_number === targetWardNum;
+        } else if (!isPureDigits && q.length > 2) {
+          matchWardNo =
+            `division ${w.ward_number}` === q ||
+            `ward ${w.ward_number}` === q;
+        }
+
+        const matchName = !isPureDigits && w.candidate_name ? w.candidate_name.toLowerCase().includes(q) : false;
+        const matchParty = !isPureDigits && w.party ? w.party.toLowerCase().includes(q) : false;
         const cleanPhone = w.phone ? w.phone.replace(/\D/g, '') : '';
         const matchPhone = allowPhoneSearch && cleanPhone.includes(queryDigits);
-        const matchGuests = w.guests?.some((g) => g.guest_name.toLowerCase().includes(q));
+        const matchGuests = !isPureDigits && w.guests?.some((g) => g.guest_name.toLowerCase().includes(q));
 
         if (!matchWardNo && !matchName && !matchParty && !matchPhone && !matchGuests) return false;
       }
@@ -292,6 +293,7 @@ export default function DashboardPage() {
       return true;
     });
 
+    // Priority Ranking:
     // If query has exact ward target, rank that exact ward at top
     if (targetWardNum !== null) {
       return matches.sort((a, b) => {
@@ -299,13 +301,6 @@ export default function DashboardPage() {
         const bExact = b.ward_number === targetWardNum;
         if (aExact && !bExact) return -1;
         if (!aExact && bExact) return 1;
-
-        if (isPureDigits) {
-          const aStarts = a.ward_number?.toString().startsWith(q);
-          const bStarts = b.ward_number?.toString().startsWith(q);
-          if (aStarts && !bStarts) return -1;
-          if (!aStarts && bStarts) return 1;
-        }
 
         return a.ward_number - b.ward_number;
       });
@@ -323,7 +318,7 @@ export default function DashboardPage() {
             Event Operations
           </h1>
           <p className="text-xs sm:text-sm text-neutral-500 mt-1 font-normal">
-            Realtime attendance tracking, allowance auditing, and catering totals for all 76 wards.
+            Realtime attendance tracking, allowance auditing, and catering totals for all 76 divisions.
           </p>
         </div>
 
@@ -363,10 +358,10 @@ export default function DashboardPage() {
               href="/api/export/wards"
               download
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-neutral-50 text-neutral-900 border border-black/[0.08] rounded-xl text-xs font-medium shadow-2xs transition-colors"
-              title="Export Ward Summary CSV"
+              title="Export Division Summary CSV"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-neutral-500" />
-              <span>Export Wards</span>
+              <span>Export Divisions</span>
             </a>
 
             <a
@@ -423,12 +418,12 @@ export default function DashboardPage() {
               {/* Wards Attendance Progress */}
               <div className="bg-white rounded-2xl p-5 border border-black/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-all flex flex-col justify-between">
                 <div className="flex items-center justify-between text-neutral-500">
-                  <span className="text-xs font-medium">Wards Arrived</span>
+                  <span className="text-xs font-medium">Divisions Arrived</span>
                   <Building2 className="w-4 h-4 text-neutral-400" />
                 </div>
                 <div className="mt-2.5 flex items-baseline gap-1.5">
                   <span className="text-3xl font-semibold tracking-tight text-neutral-900">{summary.wards_with_arrivals}</span>
-                  <span className="text-xs text-neutral-400">/ 76 Wards</span>
+                  <span className="text-xs text-neutral-400">/ 76 Divisions</span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2.5">
                   <span className="font-medium text-neutral-800">{summary.wards_without_arrivals}</span> pending
@@ -452,13 +447,13 @@ export default function DashboardPage() {
                     +{summary.total_excess_people}
                   </span>
                   <span className={`text-xs ml-1.5 ${summary.total_excess_people > 0 ? 'text-rose-600' : 'text-neutral-400'}`}>
-                    over 5/ward
+                    over 5/division
                   </span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2.5">
                   <span className={`font-medium ${summary.wards_exceeding_allowance > 0 ? 'text-rose-700' : 'text-neutral-800'}`}>
                     {summary.wards_exceeding_allowance}
-                  </span> wards exceeding
+                  </span> divisions exceeding
                 </p>
               </div>
 
@@ -544,7 +539,7 @@ export default function DashboardPage() {
                   <span className="text-xs text-neutral-400">/ 76 Confirmed</span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2.5">
-                  <span className="font-medium text-amber-700">{summary.wards_unconfirmed_food}</span> wards pending confirmation
+                  <span className="font-medium text-amber-700">{summary.wards_unconfirmed_food}</span> divisions pending confirmation
                 </p>
               </div>
             </div>
@@ -558,7 +553,7 @@ export default function DashboardPage() {
                 <span className="text-3xl font-semibold tracking-tight text-neutral-900 mt-1 block">{summary.total_entered}</span>
               </div>
               <div className="bg-white rounded-2xl p-5 border border-black/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
-                <span className="text-xs font-medium text-neutral-500 block">Wards Arrived</span>
+                <span className="text-xs font-medium text-neutral-500 block">Divisions Arrived</span>
                 <span className="text-3xl font-semibold tracking-tight text-neutral-900 mt-1 block">{summary.wards_with_arrivals} / 76</span>
               </div>
               <div className="bg-white rounded-2xl p-5 border border-black/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
@@ -732,7 +727,7 @@ export default function DashboardPage() {
                 <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
-                  placeholder="Instant AJAX search: type ward #, candidate, party, phone, or guest..."
+                  placeholder="Instant AJAX search: type division #, candidate, party, phone, or guest..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm bg-neutral-50/80 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-neutral-900 outline-none"
@@ -792,10 +787,10 @@ export default function DashboardPage() {
             {/* Quick Result Counter */}
             <div className="flex items-center justify-between text-xs text-neutral-400 pt-1 border-t border-black/[0.04]">
               <span>
-                Showing <strong className="text-neutral-700 font-semibold">{filteredWards.length}</strong> of {wards.length} wards
+                Showing <strong className="text-neutral-700 font-semibold">{filteredWards.length}</strong> of {wards.length} divisions
                 {searchQuery && ` matching "${searchQuery}"`}
               </span>
-              <span className="hidden sm:inline">5-person total allowance per ward</span>
+              <span className="hidden sm:inline">5-person total allowance per division</span>
             </div>
           </div>
 
@@ -805,8 +800,8 @@ export default function DashboardPage() {
               {filteredWards.length === 0 ? (
                 <div className="col-span-full bg-white rounded-2xl p-12 text-center text-neutral-500 border border-black/[0.06]">
                   <Search className="w-10 h-10 text-neutral-300 mx-auto mb-2" />
-                  <p className="font-semibold text-base text-neutral-800">No wards match your search</p>
-                  <p className="text-xs text-neutral-400 mt-1">Try typing a different candidate name, party, or ward number.</p>
+                  <p className="font-semibold text-base text-neutral-800">No divisions match your search</p>
+                  <p className="text-xs text-neutral-400 mt-1">Try typing a different candidate name, party, or division number.</p>
                 </div>
               ) : (
                 filteredWards.map((w) => {
@@ -838,7 +833,7 @@ export default function DashboardPage() {
                             </span>
                             <div>
                               <span className="text-xs text-neutral-400 font-medium block">
-                                Ward {w.ward_number}
+                                Division {w.ward_number}
                               </span>
                               <h3 className="font-semibold text-base text-neutral-900 leading-snug tracking-tight">
                                 {w.candidate_name}
@@ -941,7 +936,7 @@ export default function DashboardPage() {
                         <button
                           onClick={() => setSelectedWardForEdit(w)}
                           className="py-2 px-3 bg-neutral-100 hover:bg-neutral-200/80 text-neutral-700 font-medium text-xs rounded-xl transition-colors flex items-center gap-1"
-                          title="Edit Ward Details"
+                          title="Edit Division Details"
                         >
                           <Edit className="w-3.5 h-3.5" />
                           <span>Edit</span>
@@ -961,7 +956,7 @@ export default function DashboardPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-neutral-50/80 text-neutral-500 text-xs font-medium border-b border-black/[0.06]">
-                      <th className="py-3 px-4">Ward #</th>
+                      <th className="py-3 px-4">Division #</th>
                       <th className="py-3 px-4">Principal Invitee</th>
                       <th className="py-3 px-4">Party</th>
                       <th className="py-3 px-4 text-center">Allowance</th>
@@ -975,7 +970,7 @@ export default function DashboardPage() {
                     {filteredWards.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="py-8 text-center text-neutral-500 font-normal">
-                          No wards match your search or filter criteria.
+                          No divisions match your search or filter criteria.
                         </td>
                       </tr>
                     ) : (
@@ -989,7 +984,7 @@ export default function DashboardPage() {
                             }`}
                           >
                             <td className="py-3 px-4 font-semibold text-neutral-900">
-                              Ward {w.ward_number}
+                              Division {w.ward_number}
                             </td>
                             <td className="py-3 px-4">
                               <span className="font-medium text-neutral-900 block">{w.candidate_name}</span>
@@ -1083,7 +1078,7 @@ export default function DashboardPage() {
                 <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
-                  placeholder="Instant AJAX search: type ward #, candidate, party, phone..."
+                  placeholder="Instant AJAX search: type division #, candidate, party, phone..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm bg-neutral-50/80 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-neutral-900 outline-none"
@@ -1147,7 +1142,7 @@ export default function DashboardPage() {
                 Showing <strong className="text-neutral-700 font-semibold">{filteredWards.length}</strong> of {wards.length} catering targets
                 {searchQuery && ` matching "${searchQuery}"`}
               </span>
-              <span className="hidden sm:inline">Baseline: 5 plates per ward invitation</span>
+              <span className="hidden sm:inline">Baseline: 5 plates per division invitation</span>
             </div>
           </div>
 
@@ -1158,7 +1153,7 @@ export default function DashboardPage() {
                 <div className="col-span-full bg-white rounded-2xl p-12 text-center text-neutral-500 border border-black/[0.06]">
                   <Utensils className="w-10 h-10 text-neutral-300 mx-auto mb-2" />
                   <p className="font-semibold text-base text-neutral-800">No catering records match your search</p>
-                  <p className="text-xs text-neutral-400 mt-1">Try resetting your filters or typing another ward number.</p>
+                  <p className="text-xs text-neutral-400 mt-1">Try resetting your filters or typing another division number.</p>
                 </div>
               ) : (
                 filteredWards.map((w) => {
@@ -1192,7 +1187,7 @@ export default function DashboardPage() {
                             </span>
                             <div>
                               <span className="text-xs text-neutral-400 font-medium block">
-                                Ward {w.ward_number}
+                                Division {w.ward_number}
                               </span>
                               <h3 className="font-semibold text-base text-neutral-900 leading-snug tracking-tight">
                                 {w.candidate_name}
@@ -1299,7 +1294,7 @@ export default function DashboardPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-neutral-50/80 text-neutral-500 text-xs font-medium border-b border-black/[0.06]">
-                      <th className="py-3 px-4">Ward #</th>
+                      <th className="py-3 px-4">Division #</th>
                       <th className="py-3 px-4">Principal Invitee</th>
                       <th className="py-3 px-4">Party</th>
                       <th className="py-3 px-4 text-center">Allowance</th>
@@ -1332,7 +1327,7 @@ export default function DashboardPage() {
                             }`}
                           >
                             <td className="py-3 px-4 font-semibold text-neutral-900">
-                              Ward {w.ward_number}
+                              Division {w.ward_number}
                             </td>
                             <td className="py-3 px-4">
                               <span className="font-medium text-neutral-900 block">{w.candidate_name}</span>
@@ -1428,7 +1423,7 @@ export default function DashboardPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-neutral-50/80 text-neutral-500 text-xs font-medium border-b border-black/[0.06]">
-                    <th className="py-3 px-4">Ward #</th>
+                    <th className="py-3 px-4">Division #</th>
                     <th className="py-3 px-4">Batch Size</th>
                     <th className="py-3 px-4">Time (IST)</th>
                     <th className="py-3 px-4">Recorded By</th>
@@ -1452,7 +1447,7 @@ export default function DashboardPage() {
                         }`}
                       >
                         <td className="py-3 px-4 font-semibold text-neutral-900">
-                          Ward {batch.ward_id}
+                          Division {batch.ward_id}
                         </td>
                         <td className="py-3 px-4">
                           <span
@@ -1625,7 +1620,7 @@ export default function DashboardPage() {
               <p className="text-xs sm:text-sm text-neutral-700">
                 You are about to void the entry of{' '}
                 <span className="font-semibold text-neutral-900">+{batchToVoid.batch_size} people</span> for{' '}
-                <span className="font-semibold text-neutral-900">Ward {batchToVoid.ward_id}</span> recorded at{' '}
+                <span className="font-semibold text-neutral-900">Division {batchToVoid.ward_id}</span> recorded at{' '}
                 {formatInKolkataTime(batchToVoid.created_at)}.
               </p>
 
@@ -1640,7 +1635,7 @@ export default function DashboardPage() {
                 <textarea
                   rows={2}
                   required
-                  placeholder="e.g. Scanned wrong ward invitation, double scanned by error..."
+                  placeholder="e.g. Scanned wrong division invitation, double scanned by error..."
                   value={voidReason}
                   onChange={(e) => setVoidReason(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-neutral-50/80 focus:bg-white border border-neutral-200 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5 rounded-xl transition-all text-neutral-900 outline-none"
@@ -1893,7 +1888,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center gap-2.5">
                     <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-medium">Export Ward Summary (CSV)</span>
+                    <span className="text-xs font-medium">Export Division Summary (CSV)</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-neutral-400" />
                 </a>

@@ -294,7 +294,7 @@ export async function recordArrival(
   if (!ward) {
     return {
       success: false,
-      message: `Ward with ID ${ward_id} not found.`,
+      message: `Division with ID ${ward_id} not found.`,
     };
   }
 
@@ -566,7 +566,7 @@ export async function updateWardAdmin(
         return {
           success: true,
           ward: freshWard,
-          message: 'Ward details and food counts saved successfully.',
+          message: 'Division details and food counts saved successfully.',
         };
       }
     } catch (err) {
@@ -583,14 +583,14 @@ export async function updateWardAdmin(
     performed_by: adminUser.id,
     old_data: oldData,
     new_data: inMemWard,
-    reason: 'Admin updated ward details or food counts',
+    reason: 'Admin updated division details or food counts',
     created_at: new Date().toISOString(),
   });
 
   return {
     success: true,
     ward: inMemWard || undefined,
-    message: 'Ward details and food counts saved successfully.',
+    message: 'Division details and food counts saved successfully.',
   };
 }
 

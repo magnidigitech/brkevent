@@ -1,6 +1,8 @@
 import { parseWardQRCode } from '../src/lib/qr/parser';
 import { WARDS_SEED_DATA } from '../src/data/wardsSeed';
 import { sanitizeCsvCell, generateCsv } from '../src/lib/csv/export';
+import { getDivisionHash, validateDivisionHash } from '../src/lib/utils/divisionHash';
+import { formatWhatsAppMessage, DEFAULT_WHATSAPP_TEMPLATE } from '../src/lib/utils/whatsapp';
 import {
   getAllWards,
   getWardByNumber,
@@ -43,6 +45,48 @@ async function runVerification() {
     }
   }
   assert(all76Passed, 'All 76 printed QR URLs resolve to exact ward numbers (1–76)');
+
+  let all76DivisionsPassed = true;
+  for (let i = 1; i <= 76; i++) {
+    const url = `https://event.bhashyamramakrishna.in/division${i}`;
+    const result = parseWardQRCode(url);
+    if (!result.valid || result.wardNumber !== i) {
+      all76DivisionsPassed = false;
+      break;
+    }
+  }
+  assert(all76DivisionsPassed, 'All 76 division URLs resolve to exact division numbers (1–76)');
+
+  // TEST: Secure WhatsApp Hashed URLs
+  let all76HashedUrlsPassed = true;
+  for (let i = 1; i <= 76; i++) {
+    const hash = getDivisionHash(i);
+    const url = `https://event.bhashyamramakrishna.in/division${i}-${hash}`;
+    const result = parseWardQRCode(url);
+    if (!result.valid || result.wardNumber !== i) {
+      all76HashedUrlsPassed = false;
+      break;
+    }
+  }
+  assert(all76HashedUrlsPassed, 'All 76 WhatsApp hashed URLs (/division[n]-[hash]) resolve to exact division numbers (1–76)');
+
+  // TEST: Hash Uniqueness & Collision Resistance
+  const hashSet = new Set<string>();
+  for (let i = 1; i <= 76; i++) {
+    hashSet.add(getDivisionHash(i));
+  }
+  assert(hashSet.size === 76, 'All 76 division hashes are 100% unique without collisions');
+
+  // TEST: Tamper Protection Validation
+  const div1Hash = getDivisionHash(1);
+  const div2Hash = getDivisionHash(2);
+  assert(validateDivisionHash(1, div1Hash) === true, 'Valid division 1 hash accepted');
+  assert(validateDivisionHash(2, div1Hash) === false, 'Tampered division 2 with division 1 hash is strictly rejected');
+  assert(validateDivisionHash(45, 'badh') === false, 'Tampered division 45 with random hash is strictly rejected');
+
+  // TEST: WhatsApp Message Format contains Hashed URL
+  const sampleMsg = formatWhatsAppMessage(DEFAULT_WHATSAPP_TEMPLATE, WARDS_SEED_DATA[0]);
+  assert(sampleMsg.includes(`https://event.bhashyamramakrishna.in/division1-${div1Hash}`), 'WhatsApp message contains secure hashed URL');
 
   // TEST 2: QR Parser - Rejections
   const invalidUrls = [

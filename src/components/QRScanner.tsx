@@ -63,7 +63,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     const parseResult = parseWardQRCode(decodedText, typeof window !== 'undefined' ? window.location.host : undefined);
 
     if (!parseResult.valid) {
-      setScannedUrlError(parseResult.error || 'Invalid QR code. Please scan an official ward invitation.');
+      setScannedUrlError(parseResult.error || 'Invalid QR code. Please scan an official division invitation.');
       return;
     }
 
@@ -176,7 +176,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
       if (errObj.name === 'NotAllowedError' || msg.includes('Permission') || msg.includes('denied')) {
         errMsg = 'Camera permission was denied. Please allow camera access in your browser to scan invitations.';
       } else if (errObj.name === 'NotFoundError' || msg.includes('not found')) {
-        errMsg = 'No camera detected on this device. Please use manual ward search below.';
+        errMsg = 'No camera detected on this device. Please use manual division search below.';
       }
 
       if (isMountedRef.current) {
@@ -236,12 +236,12 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     const queryDigits = cleanQuery.replace(/\D/g, '');
     const digitCount = queryDigits.length;
 
-    // Rule: For 1 or 2 digits, search strictly by Ward number (do NOT match random 2-digit pairs in phone numbers).
+    // Rule: For 1 or 2 digits, search strictly by Division number (do NOT match random 2-digit pairs in phone numbers).
     // If more than 2 digits (3+ digits, e.g. "98851", "4343"), check against phone numbers.
     const allowPhoneSearch = digitCount > 2;
 
-    // Check if query is like "w45", "w-45", "ward 45"
-    const wardPrefixMatch = cleanQuery.match(/^(?:w|ward)[ -]?(\d{1,2})$/i);
+    // Check if query is like "division 45", "div 45", "d45", "w45", "ward 45" or pure digits like "1", "45"
+    const wardPrefixMatch = cleanQuery.match(/^(?:w|ward|d|div|division)[ -]?(\d{1,2})$/i);
     const targetWardNum = isPureDigits
       ? parseInt(cleanQuery, 10)
       : wardPrefixMatch
@@ -251,46 +251,39 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     const matches = wards.filter((w) => {
       if (!w) return false;
 
-      // 1. Ward Number Matches
-      const wardNumStr = w.ward_number?.toString() || '';
-      const matchExactWard = targetWardNum !== null && w.ward_number === targetWardNum;
-      const matchPrefixWard = isPureDigits && wardNumStr.startsWith(cleanQuery);
-      const matchWardText =
-        `ward ${w.ward_number}`.includes(cleanQuery) ||
-        `w-${w.ward_number}`.includes(cleanQuery) ||
-        `w${w.ward_number}`.includes(cleanQuery);
+      // 1. Division / Ward Number Matches
+      let matchDivision = false;
+      if (targetWardNum !== null) {
+        // Single and double digit numbers match EXACT division only (e.g. "1" matches Division 1 only, never 10, 11, etc.)
+        matchDivision = w.ward_number === targetWardNum;
+      } else if (!isPureDigits && cleanQuery.length > 2) {
+        matchDivision =
+          `division ${w.ward_number}` === cleanQuery ||
+          `ward ${w.ward_number}` === cleanQuery;
+      }
 
-      // 2. Candidate Name Matches
-      const matchName = w.candidate_name ? w.candidate_name.toLowerCase().includes(cleanQuery) : false;
+      // 2. Candidate Name Matches (only when query is not pure digits)
+      const matchName = !isPureDigits && w.candidate_name ? w.candidate_name.toLowerCase().includes(cleanQuery) : false;
 
-      // 3. Party Matches
-      const matchParty = w.party ? w.party.toLowerCase().includes(cleanQuery) : false;
+      // 3. Party Matches (only when query is not pure digits)
+      const matchParty = !isPureDigits && w.party ? w.party.toLowerCase().includes(cleanQuery) : false;
 
       // 4. Phone Number Matches (strictly allowed ONLY if more than 2 digits)
       const cleanPhone = w.phone ? w.phone.replace(/\D/g, '') : '';
       const matchPhone = allowPhoneSearch && cleanPhone.includes(queryDigits);
 
-      return matchExactWard || matchPrefixWard || matchWardText || matchName || matchParty || matchPhone;
+      return matchDivision || matchName || matchParty || matchPhone;
     });
 
     // Priority Ranking:
-    // Rank 1: Exact ward number match ALWAYS first
-    // Rank 2: Ward number prefix match (e.g. searching '4' puts '4' first, then '40', '41', etc.)
-    // Rank 3: Candidate name match
-    // Rank 4: Phone number match
+    // Rank 1: Exact division number match ALWAYS first
+    // Rank 2: Ascending division order
     return matches
       .sort((a, b) => {
         const aExact = targetWardNum !== null && a.ward_number === targetWardNum;
         const bExact = targetWardNum !== null && b.ward_number === targetWardNum;
         if (aExact && !bExact) return -1;
         if (!aExact && bExact) return 1;
-
-        if (isPureDigits) {
-          const aStarts = a.ward_number?.toString().startsWith(cleanQuery);
-          const bStarts = b.ward_number?.toString().startsWith(cleanQuery);
-          if (aStarts && !bStarts) return -1;
-          if (!aStarts && bStarts) return 1;
-        }
 
         return a.ward_number - b.ward_number;
       })
@@ -419,7 +412,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
           <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search ward # (1–76), corporator, party..."
+            placeholder="Search division # (1–76), corporator, party..."
             value={manualSearchQuery}
             onChange={(e) => setManualSearchQuery(e.target.value)}
             className="w-full pl-10 pr-9 py-2.5 text-sm bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white text-neutral-900 placeholder:text-neutral-400 rounded-2xl border border-transparent focus:border-black/[0.1] focus:ring-2 focus:ring-neutral-900/10 focus:outline-none transition-all"
@@ -442,7 +435,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
             {searchResults.length > 0 ? (
               <>
                 <div className="px-1 py-1 flex items-center justify-between text-[11px] font-medium text-neutral-400">
-                  <span>Matching Wards</span>
+                  <span>Matching Divisions</span>
                   <span>
                     {searchResults.length} {searchResults.length === 1 ? 'match' : 'matches'}
                   </span>
@@ -465,7 +458,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
                           {w.candidate_name}
                         </span>
                         <span className="text-[11px] text-neutral-500 truncate mt-0.5">
-                          Ward {w.ward_number} • {w.phone || 'No phone'}
+                          Division {w.ward_number} • {w.phone || 'No phone'}
                         </span>
                       </div>
                     </div>
@@ -479,8 +472,8 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
               </>
             ) : (
               <div className="py-6 text-center text-neutral-400">
-                <p className="text-xs font-medium text-neutral-700">No wards match &ldquo;{manualSearchQuery}&rdquo;</p>
-                <p className="text-[11px] text-neutral-400 mt-1">Try ward number (1–76), corporator name, or party</p>
+                <p className="text-xs font-medium text-neutral-700">No divisions match &ldquo;{manualSearchQuery}&rdquo;</p>
+                <p className="text-[11px] text-neutral-400 mt-1">Try division number (1–76), corporator name, or party</p>
               </div>
             )}
           </div>

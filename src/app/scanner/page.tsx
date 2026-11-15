@@ -102,7 +102,7 @@ export default function ScannerPage() {
           Gate Attendance Scanner
         </h1>
         <p className="text-xs sm:text-sm text-neutral-500 mt-1 font-normal">
-          Scan printed ward invitations (Wards 1–76). 5 people allowance per ward.
+          Scan printed division invitations (Divisions 1–76). 5 people allowance per division.
         </p>
       </div>
 

@@ -35,15 +35,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Direct check if URL itself already contains /ward[n]
-    const directMatch = parsed.pathname.match(/\/ward([0-9]+)/i);
+    // Direct check if URL itself already contains /ward[n] or /division[n]
+    const directMatch = parsed.pathname.match(/\/(?:ward|division)([0-9]+)/i);
     if (directMatch) {
       const wardNo = parseInt(directMatch[1], 10);
       if (wardNo >= 1 && wardNo <= 76) {
         return NextResponse.json({
           valid: true,
           wardNumber: wardNo,
-          resolvedUrl: `https://event.bhashyamramakrishna.in/ward${wardNo}`,
+          resolvedUrl: `https://event.bhashyamramakrishna.in/division${wardNo}`,
         });
       }
     }
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     });
 
     const location = response.headers.get('location') || '';
-    const match = location.match(/\/ward([0-9]+)/i);
+    const match = location.match(/\/(?:ward|division)([0-9]+)/i);
 
     if (match) {
       const wardNumber = parseInt(match[1], 10);
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           valid: true,
           wardNumber,
-          resolvedUrl: `https://event.bhashyamramakrishna.in/ward${wardNumber}`,
+          resolvedUrl: `https://event.bhashyamramakrishna.in/division${wardNumber}`,
         });
       }
     }

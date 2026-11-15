@@ -1,3 +1,5 @@
+import { getDivisionHash } from './divisionHash';
+
 /**
  * WhatsApp Helper Utilities & Message Templating
  * Standard WhatsApp formatting:
@@ -11,8 +13,8 @@ export const DEFAULT_WHATSAPP_TEMPLATE = `Namaste *{name}* garu 🙏,
 
 You are cordially invited to the prestigious event hosted by *Sri Bhashyam Ramakrishna* garu.
 
-📌 *Ward Details:*
-• *Ward:* Ward {ward} ({party})
+📌 *Division Details:*
+• *Division:* Division {division} ({party})
 • *Principal Invitee:* {name}
 • *Total Allowed:* *{allowance} Members* (including principal invitee)
 
@@ -73,17 +75,20 @@ export function formatWhatsAppMessage(
   ward: WardMessageContext,
   domain: string = 'https://event.bhashyamramakrishna.in'
 ): string {
-  const url = `${domain.replace(/\/$/, '')}/ward${ward.ward_number}`;
+  const hash = getDivisionHash(ward.ward_number);
+  const url = `${domain.replace(/\/$/, '')}/division${ward.ward_number}-${hash}`;
   const allowance = ward.allowance ?? 5;
   const entered = ward.total_entered ?? 0;
   const status = entered > 0 ? `${entered} entered` : 'Not yet entered';
 
   let msg = template;
 
-  // Replace placeholders: support both {var} and {{var}}
+  // Replace placeholders: support both {var} and {{var}} for division and legacy ward
   const replacements: Record<string, string> = {
     name: ward.candidate_name,
     candidate_name: ward.candidate_name,
+    division: String(ward.ward_number),
+    division_number: String(ward.ward_number),
     ward: String(ward.ward_number),
     ward_number: String(ward.ward_number),
     party: ward.party,

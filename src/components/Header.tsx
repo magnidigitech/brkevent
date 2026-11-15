@@ -101,32 +101,35 @@ export function Header() {
 
           {/* Navigation Links (Apple Style Segmented Pills) */}
           <nav className="flex items-center gap-1 sm:gap-2">
-            <Link
-              href="/scanner"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-[0.98] ${
-                pathname?.startsWith('/scanner') || pathname?.startsWith('/ward')
-                  ? 'bg-neutral-900 text-white shadow-xs'
-                  : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
-              }`}
-            >
-              <QrCode className="w-3.5 h-3.5" />
-              <span>Scanner</span>
-            </Link>
+            {/* Desktop Navigation Pills (Hidden on mobile where BottomNav handles navigation) */}
+            <div className="hidden sm:flex items-center gap-1.5">
+              <Link
+                href="/scanner"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-[0.98] ${
+                  pathname?.startsWith('/scanner') || pathname?.startsWith('/ward')
+                    ? 'bg-neutral-900 text-white shadow-xs'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                }`}
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>Scanner</span>
+              </Link>
 
-            <Link
-              href="/dashboard"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-[0.98] ${
-                pathname?.startsWith('/dashboard')
-                  ? 'bg-neutral-900 text-white shadow-xs'
-                  : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
-              }`}
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Dashboard</span>
-            </Link>
+              <Link
+                href="/dashboard"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-[0.98] ${
+                  pathname?.startsWith('/dashboard')
+                    ? 'bg-neutral-900 text-white shadow-xs'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                }`}
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
+              </Link>
+            </div>
 
             {/* Staff Role Badge & Logout */}
-            <div className="flex items-center gap-2 pl-2 sm:pl-3 ml-1 border-l border-neutral-200">
+            <div className="flex items-center gap-2 pl-1 sm:pl-3 sm:ml-1 sm:border-l sm:border-neutral-200">
               {mounted && profile && (
                 <div className="hidden sm:flex flex-col items-end">
                   <span className="text-xs font-medium text-neutral-800 flex items-center gap-1">

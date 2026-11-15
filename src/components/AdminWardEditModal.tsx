@@ -80,13 +80,13 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Failed to update ward details.');
+        throw new Error(data.message || 'Failed to update division details.');
       }
 
       onSaved(data.ward);
       onClose();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error updating ward.';
+      const msg = err instanceof Error ? err.message : 'Error updating division.';
       setErrorMsg(msg);
     } finally {
       setSaving(false);
@@ -100,9 +100,9 @@ export function AdminWardEditModal({ ward, onClose, onSaved }: AdminWardEditModa
         <div className="bg-white border-b border-black/[0.06] px-6 py-4 flex items-center justify-between">
           <div>
             <span className="text-xs text-neutral-500 font-medium block">
-              Ward Settings & Directory
+              Division Settings & Directory
             </span>
-            <h3 className="text-lg font-semibold text-neutral-900 tracking-tight">Edit Ward {ward.ward_number} Details</h3>
+            <h3 className="text-lg font-semibold text-neutral-900 tracking-tight">Edit Division {ward.ward_number} Details</h3>
           </div>
           <button
             onClick={onClose}

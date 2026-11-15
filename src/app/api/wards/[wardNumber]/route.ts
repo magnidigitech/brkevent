@@ -14,7 +14,7 @@ export async function GET(
 
     if (isNaN(wardNumber) || wardNumber < 1 || wardNumber > 76) {
       return NextResponse.json(
-        { success: false, message: `Ward number ${rawWard} is invalid. Wards must be 1 to 76.` },
+        { success: false, message: `Division number ${rawWard} is invalid. Divisions must be 1 to 76.` },
         { status: 400 }
       );
     }
@@ -22,7 +22,7 @@ export async function GET(
     const ward = await getWardByNumber(wardNumber);
     if (!ward) {
       return NextResponse.json(
-        { success: false, message: `Ward ${wardNumber} not found.` },
+        { success: false, message: `Division ${wardNumber} not found.` },
         { status: 404 }
       );
     }
@@ -43,7 +43,7 @@ export async function PATCH(
     const wardNumber = parseInt(rawWard, 10);
 
     if (isNaN(wardNumber) || wardNumber < 1 || wardNumber > 76) {
-      return NextResponse.json({ success: false, message: 'Invalid ward number.' }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Invalid division number.' }, { status: 400 });
     }
 
     // Role check: Admin only

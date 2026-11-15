@@ -77,15 +77,15 @@ export function parseWardQRCode(rawScannedText: string, currentHost?: string): Q
     };
   }
 
-  // Check path pattern: /ward1 to /ward76
+  // Check path pattern: /ward1 to /ward76 OR /division1 to /division76 (with optional tamper-proof hash)
   const pathname = parsedUrl.pathname.replace(/\/+$/, ''); // Remove trailing slash
-  const wardMatch = pathname.match(/^\/ward([0-9]+)$/i);
+  const wardMatch = pathname.match(/^\/(?:ward|division)([0-9]+)(?:-[a-z0-9]{4,8})?$/i);
 
   if (!wardMatch) {
     return {
       valid: false,
       originalUrl: trimmed,
-      error: `Invalid invitation path "${pathname}". Expected /ward1 through /ward76.`,
+      error: `Invalid invitation path "${pathname}". Expected /division1 or /ward1 through 76.`,
     };
   }
 
@@ -94,7 +94,7 @@ export function parseWardQRCode(rawScannedText: string, currentHost?: string): Q
     return {
       valid: false,
       originalUrl: trimmed,
-      error: `Ward number ${wardMatch[1]} is out of range. Valid wards are 1 to 76.`,
+      error: `Division number ${wardMatch[1]} is out of range. Valid divisions are 1 to 76.`,
     };
   }
 

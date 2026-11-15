@@ -13,7 +13,7 @@ export async function GET() {
 
     const headers = [
       'Batch ID',
-      'Ward Number',
+      'Division Number',
       'Principal Invitee',
       'Batch Size',
       'Date/Time (Asia/Kolkata)',
@@ -33,7 +33,7 @@ export async function GET() {
       return [
         b.id,
         b.ward_id,
-        ward?.candidate_name || 'Ward ' + b.ward_id,
+        ward?.candidate_name || 'Division ' + b.ward_id,
         b.batch_size,
         formatInKolkataTime(b.created_at),
         b.created_at,
@@ -49,7 +49,7 @@ export async function GET() {
     });
 
     const csv = generateCsv(headers, rows);
-    const filename = `brk-event-entry-history-${new Date().toISOString().split('T')[0]}.csv`;
+    const filename = `brk-event-division-entries-${new Date().toISOString().split('T')[0]}.csv`;
 
     return new NextResponse('\uFEFF' + csv, {
       status: 200,
