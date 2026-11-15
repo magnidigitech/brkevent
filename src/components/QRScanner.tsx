@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Camera, CameraOff, AlertCircle, RefreshCw, Search, X, ChevronRight } from 'lucide-react';
 import { parseWardQRCode } from '@/lib/qr/parser';
 import { WARDS_SEED_DATA } from '@/data/wardsSeed';
@@ -227,24 +227,75 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     onWardScanned(wardNumber);
   };
 
-  // Live AJAX search filtering for manual lookup
+  // Live AJAX search filtering for manual lookup with smart numeric prioritization
   const cleanQuery = manualSearchQuery.toLowerCase().trim();
-  const searchResults = cleanQuery
-    ? wards
-        .filter((w) => {
-          if (!w) return false;
-          const matchNum =
-            w.ward_number?.toString() === cleanQuery ||
-            `ward ${w.ward_number}`.toLowerCase().includes(cleanQuery) ||
-            `w-${w.ward_number}`.toLowerCase().includes(cleanQuery) ||
-            `w${w.ward_number}`.toLowerCase().includes(cleanQuery);
-          const matchName = w.candidate_name ? w.candidate_name.toLowerCase().includes(cleanQuery) : false;
-          const matchParty = w.party ? w.party.toLowerCase().includes(cleanQuery) : false;
-          const matchPhone = w.phone ? w.phone.toLowerCase().includes(cleanQuery) : false;
-          return matchNum || matchName || matchParty || matchPhone;
-        })
-        .slice(0, 10)
-    : [];
+  const searchResults = useMemo(() => {
+    if (!cleanQuery) return [];
+
+    const isPureDigits = /^\d+$/.test(cleanQuery);
+    const queryDigits = cleanQuery.replace(/\D/g, '');
+    const digitCount = queryDigits.length;
+
+    // Rule: For 1 or 2 digits, search strictly by Ward number (do NOT match random 2-digit pairs in phone numbers).
+    // If more than 2 digits (3+ digits, e.g. "98851", "4343"), check against phone numbers.
+    const allowPhoneSearch = digitCount > 2;
+
+    // Check if query is like "w45", "w-45", "ward 45"
+    const wardPrefixMatch = cleanQuery.match(/^(?:w|ward)[ -]?(\d{1,2})$/i);
+    const targetWardNum = isPureDigits
+      ? parseInt(cleanQuery, 10)
+      : wardPrefixMatch
+      ? parseInt(wardPrefixMatch[1], 10)
+      : null;
+
+    const matches = wards.filter((w) => {
+      if (!w) return false;
+
+      // 1. Ward Number Matches
+      const wardNumStr = w.ward_number?.toString() || '';
+      const matchExactWard = targetWardNum !== null && w.ward_number === targetWardNum;
+      const matchPrefixWard = isPureDigits && wardNumStr.startsWith(cleanQuery);
+      const matchWardText =
+        `ward ${w.ward_number}`.includes(cleanQuery) ||
+        `w-${w.ward_number}`.includes(cleanQuery) ||
+        `w${w.ward_number}`.includes(cleanQuery);
+
+      // 2. Candidate Name Matches
+      const matchName = w.candidate_name ? w.candidate_name.toLowerCase().includes(cleanQuery) : false;
+
+      // 3. Party Matches
+      const matchParty = w.party ? w.party.toLowerCase().includes(cleanQuery) : false;
+
+      // 4. Phone Number Matches (strictly allowed ONLY if more than 2 digits)
+      const cleanPhone = w.phone ? w.phone.replace(/\D/g, '') : '';
+      const matchPhone = allowPhoneSearch && cleanPhone.includes(queryDigits);
+
+      return matchExactWard || matchPrefixWard || matchWardText || matchName || matchParty || matchPhone;
+    });
+
+    // Priority Ranking:
+    // Rank 1: Exact ward number match ALWAYS first
+    // Rank 2: Ward number prefix match (e.g. searching '4' puts '4' first, then '40', '41', etc.)
+    // Rank 3: Candidate name match
+    // Rank 4: Phone number match
+    return matches
+      .sort((a, b) => {
+        const aExact = targetWardNum !== null && a.ward_number === targetWardNum;
+        const bExact = targetWardNum !== null && b.ward_number === targetWardNum;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+
+        if (isPureDigits) {
+          const aStarts = a.ward_number?.toString().startsWith(cleanQuery);
+          const bStarts = b.ward_number?.toString().startsWith(cleanQuery);
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+        }
+
+        return a.ward_number - b.ward_number;
+      })
+      .slice(0, 10);
+  }, [cleanQuery, wards]);
 
   return (
     <div className="w-full max-w-lg flex flex-col items-center gap-4">

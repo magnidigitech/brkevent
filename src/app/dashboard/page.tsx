@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Users,
@@ -229,43 +229,90 @@ export default function DashboardPage() {
     }
   };
 
-  // Instant AJAX Filter Wards
-  const filteredWards = wards.filter((w) => {
-    // Search query matches ward number, candidate name, party, phone, or guest names
+  // Instant AJAX Filter & Priority Sort Wards
+  const filteredWards = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (q) {
-      const matchWardNo = w.ward_number.toString() === q || `ward ${w.ward_number}`.includes(q);
-      const matchName = w.candidate_name.toLowerCase().includes(q);
-      const matchParty = w.party.toLowerCase().includes(q);
-      const matchPhone = w.phone ? w.phone.toLowerCase().includes(q) : false;
-      const matchGuests = w.guests?.some((g) => g.guest_name.toLowerCase().includes(q));
-      if (!matchWardNo && !matchName && !matchParty && !matchPhone && !matchGuests) return false;
+    const isPureDigits = /^\d+$/.test(q);
+    const queryDigits = q.replace(/\D/g, '');
+    const digitCount = queryDigits.length;
+
+    // Rule: For 1 or 2 digits, search strictly by Ward number (do NOT match random 2-digit pairs in phone numbers).
+    // If more than 2 digits (3+ digits, e.g. "98851", "4343"), check against phone numbers.
+    const allowPhoneSearch = digitCount > 2;
+
+    const wardPrefixMatch = q.match(/^(?:w|ward)[ -]?(\d{1,2})$/i);
+    const targetWardNum = isPureDigits
+      ? parseInt(q, 10)
+      : wardPrefixMatch
+      ? parseInt(wardPrefixMatch[1], 10)
+      : null;
+
+    const matches = wards.filter((w) => {
+      if (q) {
+        const wardNumStr = w.ward_number?.toString() || '';
+        const matchExactWard = targetWardNum !== null && w.ward_number === targetWardNum;
+        const matchPrefixWard = isPureDigits && wardNumStr.startsWith(q);
+        const matchWardNo =
+          matchExactWard ||
+          matchPrefixWard ||
+          `ward ${w.ward_number}`.includes(q) ||
+          `w-${w.ward_number}`.includes(q) ||
+          `w${w.ward_number}`.includes(q);
+        const matchName = w.candidate_name ? w.candidate_name.toLowerCase().includes(q) : false;
+        const matchParty = w.party ? w.party.toLowerCase().includes(q) : false;
+        const cleanPhone = w.phone ? w.phone.replace(/\D/g, '') : '';
+        const matchPhone = allowPhoneSearch && cleanPhone.includes(queryDigits);
+        const matchGuests = w.guests?.some((g) => g.guest_name.toLowerCase().includes(q));
+
+        if (!matchWardNo && !matchName && !matchParty && !matchPhone && !matchGuests) return false;
+      }
+
+      // Party filter
+      if (partyFilter !== 'ALL' && w.party !== partyFilter) {
+        return false;
+      }
+
+      // Attendance status filter (applies to 'entries')
+      if (activeTab === 'entries') {
+        if (statusFilter === 'ARRIVED' && w.total_entered === 0) return false;
+        if (statusFilter === 'NOT_ARRIVED' && w.total_entered > 0) return false;
+        if (statusFilter === 'OVER_ALLOWANCE' && w.total_entered <= w.allowance) return false;
+      }
+
+      // Food filter (applies to 'food')
+      if (activeTab === 'food') {
+        const totalFood = (w.expected_veg || 0) + (w.expected_non_veg || 0);
+        const hasFoodSet = w.expected_veg !== null || w.expected_non_veg !== null;
+        if (foodFilter === 'CONFIRMED' && !w.food_confirmed) return false;
+        if (foodFilter === 'UNCONFIRMED' && w.food_confirmed) return false;
+        if (foodFilter === 'UNSET' && hasFoodSet) return false;
+        if (foodFilter === 'MISMATCH' && (!hasFoodSet || totalFood === w.allowance)) return false;
+      }
+
+      return true;
+    });
+
+    // If query has exact ward target, rank that exact ward at top
+    if (targetWardNum !== null) {
+      return matches.sort((a, b) => {
+        const aExact = a.ward_number === targetWardNum;
+        const bExact = b.ward_number === targetWardNum;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+
+        if (isPureDigits) {
+          const aStarts = a.ward_number?.toString().startsWith(q);
+          const bStarts = b.ward_number?.toString().startsWith(q);
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+        }
+
+        return a.ward_number - b.ward_number;
+      });
     }
 
-    // Party filter
-    if (partyFilter !== 'ALL' && w.party !== partyFilter) {
-      return false;
-    }
-
-    // Attendance status filter (applies to 'entries')
-    if (activeTab === 'entries') {
-      if (statusFilter === 'ARRIVED' && w.total_entered === 0) return false;
-      if (statusFilter === 'NOT_ARRIVED' && w.total_entered > 0) return false;
-      if (statusFilter === 'OVER_ALLOWANCE' && w.total_entered <= w.allowance) return false;
-    }
-
-    // Food filter (applies to 'food')
-    if (activeTab === 'food') {
-      const totalFood = (w.expected_veg || 0) + (w.expected_non_veg || 0);
-      const hasFoodSet = w.expected_veg !== null || w.expected_non_veg !== null;
-      if (foodFilter === 'CONFIRMED' && !w.food_confirmed) return false;
-      if (foodFilter === 'UNCONFIRMED' && w.food_confirmed) return false;
-      if (foodFilter === 'UNSET' && hasFoodSet) return false;
-      if (foodFilter === 'MISMATCH' && (!hasFoodSet || totalFood === w.allowance)) return false;
-    }
-
-    return true;
-  });
+    return matches;
+  }, [wards, searchQuery, partyFilter, activeTab, statusFilter, foodFilter]);
 
   return (
     <div className="flex-1 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
