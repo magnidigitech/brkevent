@@ -88,9 +88,6 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
       // 1. Instant cache check (0ms)
       const cachedWardNumber = getCachedCanvaResolution(decodedText);
       if (cachedWardNumber) {
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          try { navigator.vibrate([80, 40, 80]); } catch {}
-        }
         onWardScanned(cachedWardNumber);
         return;
       }
@@ -101,9 +98,6 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         const data = await res.json();
         if (data.valid && data.wardNumber) {
           cacheCanvaResolution(decodedText, data.wardNumber);
-          if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-            try { navigator.vibrate([80, 40, 80]); } catch {}
-          }
           onWardScanned(data.wardNumber);
         } else {
           setScannedUrlError(data.message || 'Could not resolve Canva QR destination.');
@@ -117,14 +111,6 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     }
 
     if (parseResult.wardNumber) {
-      // Gentle haptic feedback on mobile
-      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        try {
-          navigator.vibrate([80, 40, 80]);
-        } catch {
-          // Ignore vibrate restrictions
-        }
-      }
       onWardScanned(parseResult.wardNumber);
     }
   }, [onWardScanned]);

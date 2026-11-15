@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QRScanner } from '@/components/QRScanner';
 import { WardEntryCard } from '@/components/WardEntryCard';
 import { AdminWardEditModal } from '@/components/AdminWardEditModal';
 import { WardWithStats, UserProfile } from '@/types/database';
-import { RefreshCw, Lock, Wifi, WifiOff, CloudUpload, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, Lock, Wifi, WifiOff, CloudUpload, CheckCircle2, LogOut } from 'lucide-react';
 import {
   initOfflineStorage,
   flushPendingQueue,
@@ -19,11 +19,28 @@ import { cacheCandidatePhotosInLocalStorage } from '@/lib/candidatePhotos';
 export default function ScannerPage() {
   const router = useRouter();
   const [selectedWardNumber, setSelectedWardNumber] = useState<number | null>(null);
+  const selectedWardRef = useRef<number | null>(null);
+  selectedWardRef.current = selectedWardNumber;
+
+  const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
+  const showExitConfirmRef = useRef<boolean>(false);
+  showExitConfirmRef.current = showExitConfirm;
+
   const [editingWard, setEditingWard] = useState<WardWithStats | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [pendingCount, setPendingCount] = useState<number>(0);
+
+  // Initialize history guard so back button never exits unexpectedly
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!window.history.state?.scannerRoot) {
+      window.history.replaceState({ scannerRoot: true }, '', window.location.href);
+      window.history.pushState({ scannerActive: true }, '', window.location.href);
+    }
+  }, []);
 
   // Initialize offline storage & automatic background sync loop
   useEffect(() => {
@@ -98,25 +115,58 @@ export default function ScannerPage() {
   const handleWardScanned = (wardNumber: number) => {
     setSelectedWardNumber(wardNumber);
     if (typeof window !== 'undefined') {
-      window.history.pushState({ wardNumber }, '', `/scanner?division=${wardNumber}`);
+      window.history.pushState({ wardNumber, view: 'result' }, '', `/scanner?division=${wardNumber}`);
     }
   };
 
   const handleScanNext = () => {
-    if (typeof window !== 'undefined' && window.location.search.includes('division=')) {
-      window.history.back();
-    } else {
-      setSelectedWardNumber(null);
+    setSelectedWardNumber(null);
+    if (typeof window !== 'undefined') {
+      if (window.location.search.includes('division=')) {
+        window.history.back();
+      } else {
+        window.history.replaceState({ scannerActive: true }, '', '/scanner');
+      }
+    }
+  };
+
+  const handleConfirmExit = () => {
+    setShowExitConfirm(false);
+    if (typeof window !== 'undefined') {
+      try {
+        window.close();
+      } catch {}
+      // Fallback if browser blocks window.close(): navigate back out of history
+      setTimeout(() => {
+        try {
+          window.history.go(-10);
+        } catch {}
+      }, 100);
     }
   };
 
   // Synchronize history navigation (hardware/browser back button & swipe back)
   useEffect(() => {
-    const handlePopState = () => {
-      if (typeof window !== 'undefined') {
-        const params = new URLSearchParams(window.location.search);
-        const divParam = params.get('division');
-        if (divParam) {
+    const handlePopState = (e: PopStateEvent) => {
+      if (typeof window === 'undefined') return;
+
+      // 1. If a modal like Candidate Photo Zoom was popped, don't change scanner view
+      if (e.state?.candidatePhotoModal) {
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const divParam = params.get('division');
+
+      // 2. Case A: User is viewing a scan result (selectedWardRef.current !== null)
+      if (selectedWardRef.current !== null) {
+        if (!divParam) {
+          // Hardware back button pressed on scan result -> return cleanly to scanner camera!
+          setSelectedWardNumber(null);
+          // Maintain active guard state for subsequent back presses
+          window.history.replaceState({ scannerActive: true }, '', '/scanner');
+          return;
+        } else {
           const num = parseInt(divParam, 10);
           if (num >= 1 && num <= 76) {
             setSelectedWardNumber(num);
@@ -124,12 +174,36 @@ export default function ScannerPage() {
           }
         }
       }
-      setSelectedWardNumber(null);
+
+      // 3. Case B: User is on the scanner camera (selectedWardRef.current === null)
+      // Hardware back button was pressed on the scanner camera!
+      // If the exit confirmation is already showing, dismiss it
+      if (showExitConfirmRef.current) {
+        setShowExitConfirm(false);
+        return;
+      }
+
+      // Show confirmation dialog: "Would you like to close the application?"
+      setShowExitConfirm(true);
+      // Re-push active state so history is preserved in the app
+      window.history.pushState({ scannerActive: true }, '', '/scanner');
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  // Keyboard Escape listener to dismiss exit confirmation
+  useEffect(() => {
+    if (!showExitConfirm) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowExitConfirm(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showExitConfirm]);
 
   // Check initial URL params for division deep link
   useEffect(() => {
@@ -259,6 +333,51 @@ export default function ScannerPage() {
             setEditingWard(null);
           }}
         />
+      )}
+
+      {/* ========================================================================= */}
+      {/* EXIT APPLICATION CONFIRMATION MODAL */}
+      {/* ========================================================================= */}
+      {showExitConfirm && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150"
+          onClick={() => setShowExitConfirm(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-[28px] max-w-sm w-full p-6 shadow-2xl border border-neutral-200/80 flex flex-col items-center text-center animate-in zoom-in-95 duration-150"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-neutral-100 border border-neutral-200 flex items-center justify-center mb-4 text-neutral-800 shadow-xs">
+              <LogOut className="w-7 h-7 text-neutral-700 stroke-[1.8]" />
+            </div>
+
+            <h3 className="text-lg font-bold text-neutral-900 tracking-tight">
+              Exit Application?
+            </h3>
+
+            <p className="text-xs sm:text-sm text-neutral-500 mt-1.5 leading-relaxed max-w-xs">
+              Would you like to close the application?
+            </p>
+
+            <div className="mt-6 flex items-center gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => setShowExitConfirm(false)}
+                className="flex-1 py-3 px-4 rounded-xl bg-neutral-100 hover:bg-neutral-200 active:scale-95 text-neutral-800 text-sm font-semibold transition-all"
+              >
+                No, Stay
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmExit}
+                className="flex-1 py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-sm font-semibold transition-all shadow-xs"
+              >
+                Yes, Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
