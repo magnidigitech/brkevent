@@ -32,13 +32,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body className="min-h-screen bg-[#f5f5f7] flex flex-col text-[#1d1d1f] antialiased selection:bg-neutral-200">
+      <body className="min-h-screen bg-[#f5f5f7] flex flex-col text-[#1d1d1f] antialiased selection:bg-neutral-200" suppressHydrationWarning>
         <Header />
         <main className="flex-1 flex flex-col pb-24 sm:pb-8">{children}</main>
         <BottomNav />

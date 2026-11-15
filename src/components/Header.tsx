@@ -19,8 +19,11 @@ export function Header() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [loggingOut, setLoggingOut] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
 
   useEffect(() => {
+    setMounted(true);
+
     // Monitor online/offline status
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -124,7 +127,7 @@ export function Header() {
 
             {/* Staff Role Badge & Logout */}
             <div className="flex items-center gap-2 pl-2 sm:pl-3 ml-1 border-l border-neutral-200">
-              {profile && (
+              {mounted && profile && (
                 <div className="hidden sm:flex flex-col items-end">
                   <span className="text-xs font-medium text-neutral-800 flex items-center gap-1">
                     {profile.role === 'admin' ? (
