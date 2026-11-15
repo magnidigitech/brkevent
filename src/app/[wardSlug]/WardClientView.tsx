@@ -64,11 +64,45 @@ export function WardClientView({
 
   const handleOpenZoom = () => {
     setIsZoomed(true);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ qrZoom: true, ward: wardNumber }, '', window.location.href);
+    }
   };
 
   const handleCloseZoom = () => {
     setIsZoomed(false);
+    if (typeof window !== 'undefined' && window.history.state?.qrZoom) {
+      window.history.back();
+    }
   };
+
+  // Synchronize history backpress & Escape key
+  useEffect(() => {
+    if (!isZoomed) return;
+
+    const handlePopState = () => {
+      // Hardware / browser back button or swipe-back dismisses zoom modal smoothly
+      setIsZoomed(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleCloseZoom();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('keydown', handleKeyDown);
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isZoomed]);
 
   return (
     <div className="flex-1 min-h-screen py-8 sm:py-12 px-4 flex flex-col items-center justify-center bg-[#f5f5f7]">

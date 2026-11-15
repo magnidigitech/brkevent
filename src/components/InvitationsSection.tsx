@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Search,
@@ -40,6 +40,47 @@ export function InvitationsSection() {
   const [previewWard, setPreviewWard] = useState<WinningCorporator | null>(null);
   const [copiedWard, setCopiedWard] = useState<number | null>(null);
   const [copiedCloudUrlWard, setCopiedCloudUrlWard] = useState<number | null>(null);
+
+  const handleOpenPreview = (ward: WinningCorporator) => {
+    setPreviewWard(ward);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ invitationPreview: true, ward: ward.ward }, '', window.location.href);
+    }
+  };
+
+  const handleClosePreview = () => {
+    setPreviewWard(null);
+    if (typeof window !== 'undefined' && window.history.state?.invitationPreview) {
+      window.history.back();
+    }
+  };
+
+  // Synchronize history backpress & Escape key
+  useEffect(() => {
+    if (!previewWard) return;
+
+    const handlePopState = () => {
+      setPreviewWard(null);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClosePreview();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('keydown', handleKeyDown);
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [previewWard]);
 
   // Sync / Regeneration state
   const [isProcessing, setIsProcessing] = useState(false);
@@ -358,7 +399,7 @@ export function InvitationsSection() {
 
                 {/* Card Preview Thumbnail */}
                 <div
-                  onClick={() => setPreviewWard(c)}
+                  onClick={() => handleOpenPreview(c)}
                   className="relative aspect-[4/5] w-full rounded-2xl overflow-hidden border border-neutral-200/80 bg-neutral-100 cursor-pointer shadow-2xs group-hover:border-neutral-300 transition-colors"
                 >
                   <img
@@ -382,7 +423,7 @@ export function InvitationsSection() {
                 <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    onClick={() => setPreviewWard(c)}
+                    onClick={() => handleOpenPreview(c)}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold transition-all shadow-2xs"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -458,7 +499,7 @@ export function InvitationsSection() {
       {previewWard && (
         <div
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
-          onClick={() => setPreviewWard(null)}
+          onClick={handleClosePreview}
         >
           <div
             className="bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-neutral-200 flex flex-col max-h-[92vh]"
@@ -486,7 +527,7 @@ export function InvitationsSection() {
 
               <button
                 type="button"
-                onClick={() => setPreviewWard(null)}
+                onClick={handleClosePreview}
                 className="w-9 h-9 rounded-full bg-neutral-200/70 hover:bg-neutral-300 flex items-center justify-center text-neutral-700 transition-colors"
               >
                 <X className="w-4 h-4" />

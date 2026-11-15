@@ -345,6 +345,8 @@ export function WardEntryCard({
                   <CandidateAvatar
                     wardNumber={ward.ward_number}
                     candidateName={winningCorp ? winningCorp.nameEn : ward.candidate_name}
+                    candidateNameTe={winningCorp ? winningCorp.nameTe : undefined}
+                    party={ward.party}
                     size="lg"
                     showWinnerRing={isWinner}
                   />
