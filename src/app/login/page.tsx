@@ -24,7 +24,11 @@ interface StoredBiometric {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get('returnUrl') || '/scanner';
+  const rawReturnUrl = searchParams.get('returnUrl');
+  const returnUrl =
+    rawReturnUrl && rawReturnUrl !== '/login' && !rawReturnUrl.startsWith('/login')
+      ? rawReturnUrl
+      : '/scanner';
 
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -37,6 +41,18 @@ function LoginForm() {
   // Biometric state
   const [biometricSupported, setBiometricSupported] = useState<boolean>(false);
   const [savedBiometric, setSavedBiometric] = useState<StoredBiometric | null>(null);
+
+  // If already logged in, redirect immediately to target page
+  useEffect(() => {
+    fetch('/api/auth/profile')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.authenticated && data?.profile) {
+          window.location.href = returnUrl;
+        }
+      })
+      .catch(() => {});
+  }, [returnUrl]);
 
   // Check WebAuthn support on mount
   useEffect(() => {
@@ -107,8 +123,8 @@ function LoginForm() {
         throw new Error(data.message || 'Biometric authentication failed.');
       }
 
-      router.push(returnUrl);
-      router.refresh();
+      // Hard redirect to returnUrl to guarantee cookie propagation and state refresh
+      window.location.href = returnUrl;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Biometric sign-in failed.';
       setErrorMsg(msg);
@@ -198,11 +214,11 @@ function LoginForm() {
       }
 
       if (enableBiometricOnLogin && biometricSupported) {
-        await registerBiometricForDevice(submitEmail);
+        registerBiometricForDevice(submitEmail).catch(() => {});
       }
 
-      router.push(returnUrl);
-      router.refresh();
+      // Hard redirect to returnUrl to guarantee cookie propagation and state refresh
+      window.location.href = returnUrl;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed.';
       setErrorMsg(msg);
