@@ -4,6 +4,20 @@ import sys
 import subprocess
 from PIL import Image, ImageDraw, ImageFont
 
+def anu_to_pua(text):
+    text = text.replace('\ufe0f', '')
+    res = []
+    for c in text:
+        try:
+            b = c.encode('cp1252')[0]
+            res.append(chr(0xf000 + b))
+        except Exception:
+            if ord(c) < 0x100:
+                res.append(chr(0xf000 + ord(c)))
+            else:
+                res.append(c)
+    return ''.join(res)
+
 def main():
     data_path = 'src/data/winningCorporators.json'
     template_path = 'base_template_300dpi.png'
@@ -47,8 +61,8 @@ def main():
         anu_name = corporator['nameAnu']
         anu_garu = ' >±sÁT'
 
-        pua_name = ''.join(chr(0xf000 + ord(c)) if ord(c) < 0x100 else c for c in anu_name)
-        pua_garu = ''.join(chr(0xf000 + ord(c)) if ord(c) < 0x100 else c for c in anu_garu)
+        pua_name = anu_to_pua(anu_name)
+        pua_garu = anu_to_pua(anu_garu)
 
         card = template.copy()
         draw = ImageDraw.Draw(card)
@@ -77,7 +91,6 @@ def main():
         card.paste(wardu_corp_img, (int(start_x_ward + w_prefix + gap), Y_WARD_BASELINE - ASSET_BASELINE_OFFSET), wardu_corp_img)
 
         # 3. Entry QR Code (cropped without outer cream padding, placed above ENTRY PASS)
-        # Symmetrically matching LOCATION QR on right (379x379 at y=1987)
         qr_file = os.path.join(qr_dir, f'{ward}.png')
         if os.path.exists(qr_file):
             qr_img = Image.open(qr_file)
