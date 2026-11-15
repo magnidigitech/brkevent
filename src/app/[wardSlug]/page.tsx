@@ -43,10 +43,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://event.bhashyamramakrishna.in';
   const canonicalUrl = `${baseUrl}/${cleanSlug}`;
 
-  const { onlineUrl, hasPhoto } = getCandidateJpegPhotoUrls(wardNumber);
-  const imageUrl = hasPhoto
-    ? onlineUrl
-    : `https://atkkyaepukxusocjtycm.supabase.co/storage/v1/object/public/invitations/${wardNumber}.jpg`;
+  // Official Invitation Card as requested for social share preview
+  const imageUrl = `https://atkkyaepukxusocjtycm.supabase.co/storage/v1/object/public/invitations/${wardNumber}.jpg`;
 
   return {
     title,
@@ -63,9 +61,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       images: [
         {
           url: imageUrl,
-          width: hasPhoto ? 400 : 1200,
-          height: hasPhoto ? 400 : 1500,
-          alt: `${candidateName} - Division ${wardNumber}`,
+          width: 2160,
+          height: 2700,
+          alt: `Official Invitation Card for ${candidateName} - Division ${wardNumber}`,
           type: 'image/jpeg',
         },
       ],
@@ -73,7 +71,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       locale: 'en_IN',
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title,
       description,
       images: [imageUrl],

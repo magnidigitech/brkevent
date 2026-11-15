@@ -15,6 +15,7 @@ import {
   updateCachedWards,
 } from '@/lib/offline/offlineSync';
 import { cacheCandidatePhotosInLocalStorage } from '@/lib/candidatePhotos';
+import { cacheAllInvitationsLocally } from '@/lib/offline/invitationCache';
 
 export default function ScannerPage() {
   const router = useRouter();
@@ -48,6 +49,8 @@ export default function ScannerPage() {
     initOfflineStorage();
     // Pre-cache all candidate photos directly into localStorage for 0ms offline access
     cacheCandidatePhotosInLocalStorage();
+    // Pre-cache all 45MB final invitation cards into CacheStorage for instant offline sharing
+    cacheAllInvitationsLocally();
     setPendingCount(getPendingQueue().length);
     if (typeof navigator !== 'undefined') {
       setIsOnline(navigator.onLine);

@@ -20,6 +20,7 @@ import {
 import { PartyBadge } from '@/components/PartyBadge';
 import { CandidateAvatar } from '@/components/CandidateAvatar';
 import WINNING_CORPORATORS from '@/data/winningCorporators.json';
+import { cacheAllInvitationsLocally, getInvitationFileForSharing } from '@/lib/offline/invitationCache';
 
 export interface WinningCorporator {
   ward: number;
@@ -37,6 +38,12 @@ export function InvitationsSection() {
   const [previewWard, setPreviewWard] = useState<WinningCorporator | null>(null);
   const [copiedWard, setCopiedWard] = useState<number | null>(null);
   const [copiedCloudUrlWard, setCopiedCloudUrlWard] = useState<number | null>(null);
+  const [sharingWard, setSharingWard] = useState<number | null>(null);
+
+  // Background pre-cache all 45MB final invitation images into CacheStorage
+  useEffect(() => {
+    cacheAllInvitationsLocally();
+  }, []);
 
   const handleOpenPreview = (ward: WinningCorporator) => {
     setPreviewWard(ward);
@@ -135,18 +142,53 @@ export function InvitationsSection() {
     } catch {}
   };
 
-  const handleShareWhatsApp = (corporator: WinningCorporator) => {
-    const imageUrl = `${SUPABASE_CDN_BASE}/${corporator.ward}.jpg`;
-    const passUrl = `https://event.bhashyamramakrishna.in/ward${corporator.ward}`;
-    const text = 
-      `🏛️ *గుంటూరు మున్సిపల్ కార్పొరేషన్ గౌరవ సన్మాన వేడుక*\n` +
-      `✨ *Division ${corporator.ward} వార్డు కార్పొరేటర్:* ${corporator.nameTe} (${corporator.nameEn}) - ${corporator.party}\n\n` +
-      `🖼️ *అధికారిక ఆహ్వాన పత్రిక (Full HD Image):*\n${imageUrl}\n\n` +
-      `🎟️ *డిజిటల్ ఎంట్రీ పాస్ & వేదిక వివరాలు:*\n${passUrl}\n\n` +
-      `తేదీ: 17/11/2026 | సాయంత్రం 7:00 గంటల నుండి\n` +
-      `వేదిక: భాష్యం ఇంటర్నేషనల్ స్కూల్, గోరంట్ల.`;
-    
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+  const handleShareWhatsApp = async (corporator: WinningCorporator) => {
+    setSharingWard(corporator.ward);
+    try {
+      const imageFile = await getInvitationFileForSharing(corporator.ward);
+
+      // Mobile PWA / Web Share API: Send ONLY the image file (NO TEXT!)
+      if (
+        imageFile &&
+        typeof navigator !== 'undefined' &&
+        navigator.canShare &&
+        navigator.canShare({ files: [imageFile] })
+      ) {
+        await navigator.share({
+          files: [imageFile],
+        });
+        return;
+      }
+
+      // Desktop browser fallback: Copy image to clipboard and notify
+      if (
+        imageFile &&
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard &&
+        typeof ClipboardItem !== 'undefined'
+      ) {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ [imageFile.type]: imageFile }),
+          ]);
+          alert('Invitation image copied to clipboard! Opening WhatsApp... Press Ctrl+V / Cmd+V to paste the image.');
+          window.open('https://web.whatsapp.com', '_blank');
+          return;
+        } catch {}
+      }
+
+      // Fallback: Direct download of image
+      const a = document.createElement('a');
+      a.href = `/invitations/${corporator.ward}.jpg`;
+      a.download = `Invitation_Division_${corporator.ward}.jpg`;
+      a.click();
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error('Error sharing image:', err);
+      }
+    } finally {
+      setSharingWard(null);
+    }
   };
 
   return (
@@ -365,11 +407,12 @@ export function InvitationsSection() {
 
                   <button
                     type="button"
+                    disabled={sharingWard === c.ward}
                     onClick={() => handleShareWhatsApp(c)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shadow-2xs"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-60 text-white text-xs font-semibold transition-all shadow-2xs"
                   >
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>WhatsApp</span>
+                    <Share2 className={`w-3.5 h-3.5 ${sharingWard === c.ward ? 'animate-spin' : ''}`} />
+                    <span>{sharingWard === c.ward ? 'Sharing...' : 'Share Image'}</span>
                   </button>
                 </div>
               </div>
@@ -452,11 +495,12 @@ export function InvitationsSection() {
 
                   <button
                     type="button"
+                    disabled={sharingWard === previewWard.ward}
                     onClick={() => handleShareWhatsApp(previewWard)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shadow-2xs"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-60 text-white text-xs font-semibold transition-all shadow-2xs"
                   >
-                    <Share2 className="w-4 h-4" />
-                    <span>WhatsApp</span>
+                    <Share2 className={`w-4 h-4 ${sharingWard === previewWard.ward ? 'animate-spin' : ''}`} />
+                    <span>{sharingWard === previewWard.ward ? 'Sharing...' : 'Share Image on WhatsApp'}</span>
                   </button>
                 </div>
 
