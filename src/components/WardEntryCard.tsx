@@ -17,6 +17,8 @@ import {
 import { WardWithStats, RecordArrivalResponse } from '@/types/database';
 import { PartyBadge } from '@/components/PartyBadge';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
+import { CandidateAvatar } from '@/components/CandidateAvatar';
+import { isWinningWard, getWinningCorporator } from '@/lib/candidatePhotos';
 import { formatInKolkataTime } from '@/lib/utils/date';
 import { WARDS_SEED_DATA } from '@/data/wardsSeed';
 import {
@@ -251,6 +253,8 @@ export function WardEntryCard({
 
   const isAtOrExceeded = ward.total_entered >= ward.allowance;
   const isOverAllowance = ward.total_entered > ward.allowance;
+  const winningCorp = getWinningCorporator(ward.ward_number);
+  const isWinner = isWinningWard(ward.ward_number);
 
   return (
     <div className="w-full max-w-lg flex flex-col gap-4">
@@ -289,63 +293,114 @@ export function WardEntryCard({
 
       {/* MAIN DIVISION INVITATION CARD */}
       <div className="bg-white rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.06)] border border-black/[0.06] overflow-hidden">
-        {/* Card Header: Refined Apple aesthetic with party badge & squircle */}
-        <div className="px-6 py-5 flex items-center justify-between border-b border-black/[0.06] bg-white">
-          <div className="flex items-center gap-3.5">
-            <span
-              className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-lg shadow-2xs border ${
-                ward.party === 'TDP'
-                  ? 'bg-[#FFF6CC] text-[#7A5B00] border-[#FFCC00]/40'
-                  : ward.party === 'JSP'
-                  ? 'bg-[#FFEBEA] text-[#D70015] border-[#FF3B30]/30'
-                  : 'bg-[#FFF1E5] text-[#C93400] border-[#FF9500]/30'
-              }`}
-            >
-              {ward.ward_number}
-            </span>
-            <div>
-              <span className="text-xs text-neutral-500 font-medium block">
-                Official Invitation
-              </span>
-              <h2 className="text-xl sm:text-2xl font-semibold text-neutral-900 tracking-tight leading-snug">
-                Division {ward.ward_number}
-              </h2>
-            </div>
-          </div>
-
-          <PartyBadge party={ward.party} size="md" />
-        </div>
-
-        {/* Candidate Details */}
-        <div className="p-6 border-b border-black/[0.06] bg-neutral-50/50">
-          <div className="flex items-start justify-between">
-            <div>
-              <span className="text-xs text-neutral-500 font-medium">Principal Invitee / Candidate</span>
-              <h3 className="text-lg font-semibold text-neutral-900 mt-0.5 tracking-tight">{ward.candidate_name}</h3>
-              {ward.phone && (
-                <div className="flex items-center gap-2 mt-2">
-                  <a
-                    href={`tel:${ward.phone}`}
-                    className="text-xs text-neutral-700 hover:text-blue-600 font-medium font-mono flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-black/[0.08] shadow-2xs transition-colors"
-                    title="Click to Call"
-                  >
-                    <Phone className="w-3 h-3 text-neutral-400" />
-                    <span>{ward.phone}</span>
-                  </a>
-                  <WhatsAppButton ward={ward} variant="pill" />
+            {/* Non-winning warning notice if applicable */}
+            {!isWinner && (
+              <div className="mx-5 sm:mx-6 mt-5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 flex items-start gap-2.5 text-xs">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="font-bold">Non-Winning Division:</strong> Division {ward.ward_number} is not among the 64 winning corporators invited to this grand felicitation event.
                 </div>
-              )}
+              </div>
+            )}
+
+            {/* Card Header: Refined Apple aesthetic with party badge & squircle */}
+            <div className="px-6 py-5 flex items-center justify-between border-b border-black/[0.06] bg-white">
+              <div className="flex items-center gap-3.5">
+                <span
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-lg shadow-2xs border ${
+                    ward.party === 'TDP'
+                      ? 'bg-[#FFF6CC] text-[#7A5B00] border-[#FFCC00]/40'
+                      : ward.party === 'JSP'
+                      ? 'bg-[#FFEBEA] text-[#D70015] border-[#FF3B30]/30'
+                      : 'bg-[#FFF1E5] text-[#C93400] border-[#FF9500]/30'
+                  }`}
+                >
+                  {ward.ward_number}
+                </span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-neutral-500 font-medium block">
+                      Official Invitation
+                    </span>
+                    {isWinner && (
+                      <span className="inline-flex items-center px-1.5 py-0.2 rounded-md text-[9px] font-bold bg-amber-500/15 text-amber-800 border border-amber-500/30">
+                        WINNER
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-semibold text-neutral-900 tracking-tight leading-snug">
+                    Division {ward.ward_number}
+                  </h2>
+                </div>
+              </div>
+
+              <PartyBadge party={ward.party} size="md" />
             </div>
 
-            {isAdmin && onEditWard && (
-              <button
-                onClick={onEditWard}
-                className="text-xs font-medium px-3 py-1.5 text-neutral-700 bg-white border border-black/[0.08] rounded-xl hover:bg-neutral-50 shadow-2xs transition-colors"
-              >
-                Edit Details
-              </button>
-            )}
-          </div>
+            {/* Candidate Details with Portrait Photo */}
+            <div className="p-5 sm:p-6 border-b border-black/[0.06] bg-neutral-50/50">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3.5 sm:gap-4 flex-1 min-w-0">
+                  {/* Photo or Fallback User Icon */}
+                  <CandidateAvatar
+                    wardNumber={ward.ward_number}
+                    candidateName={winningCorp ? winningCorp.nameEn : ward.candidate_name}
+                    size="lg"
+                    showWinnerRing={isWinner}
+                  />
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs text-neutral-500 font-medium">Principal Invitee / Candidate</span>
+                      {isWinner ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-900 border border-amber-500/30">
+                          ★ Winner
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-neutral-200/70 text-neutral-600">
+                          Non-Winner
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-base sm:text-lg font-bold text-neutral-900 mt-0.5 tracking-tight truncate">
+                      {winningCorp ? (
+                        <span>
+                          {winningCorp.nameTe}{' '}
+                          <span className="text-xs sm:text-sm font-semibold text-neutral-600 font-normal">
+                            ({winningCorp.nameEn})
+                          </span>
+                        </span>
+                      ) : (
+                        ward.candidate_name
+                      )}
+                    </h3>
+
+                    {ward.phone && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <a
+                          href={`tel:${ward.phone}`}
+                          className="text-xs text-neutral-700 hover:text-blue-600 font-medium font-mono flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-black/[0.08] shadow-2xs transition-colors"
+                          title="Click to Call"
+                        >
+                          <Phone className="w-3 h-3 text-neutral-400" />
+                          <span>{ward.phone}</span>
+                        </a>
+                        <WhatsAppButton ward={ward} variant="pill" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {isAdmin && onEditWard && (
+                  <button
+                    onClick={onEditWard}
+                    className="text-xs font-medium px-3 py-1.5 text-neutral-700 bg-white border border-black/[0.08] rounded-xl hover:bg-neutral-50 shadow-2xs transition-colors shrink-0"
+                  >
+                    Edit Details
+                  </button>
+                )}
+              </div>
 
           {/* Accompanying Guests (if recorded) */}
           {ward.guests && ward.guests.length > 0 && (

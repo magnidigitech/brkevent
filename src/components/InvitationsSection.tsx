@@ -21,12 +21,13 @@ import {
   ImageIcon
 } from 'lucide-react';
 import { PartyBadge } from '@/components/PartyBadge';
+import { CandidateAvatar } from '@/components/CandidateAvatar';
 import WINNING_CORPORATORS from '@/data/winningCorporators.json';
 
 export interface WinningCorporator {
   ward: number;
   nameEn: string;
-  party: 'TDP' | 'JSP' | 'BJP' | 'IND';
+  party: 'TDP' | 'JSP' | 'BJP';
   nameTe: string;
   nameAnu: string;
 }
@@ -81,7 +82,6 @@ export function InvitationsSection() {
       TDP: corporators.filter((c) => c.party === 'TDP').length,
       JSP: corporators.filter((c) => c.party === 'JSP').length,
       BJP: corporators.filter((c) => c.party === 'BJP').length,
-      IND: corporators.filter((c) => c.party === 'IND').length,
     };
   }, [corporators]);
 
@@ -197,10 +197,10 @@ export function InvitationsSection() {
               <span>Official Felicitation Invitations</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
-              65 Winning Corporators
+              64 Winning Corporators
             </h2>
             <p className="text-xs sm:text-sm text-neutral-600 max-w-xl">
-              High-resolution 300 DPI Telugu invitation cards and verified Entry Pass QR codes generated for the 65 election-winning divisions. Stored online on cloud CDN for remote team sharing.
+              High-resolution 300 DPI Telugu invitation cards and verified Entry Pass QR codes generated for the 64 election-winning divisions. Stored online on cloud CDN for remote team sharing.
             </p>
           </div>
 
@@ -288,7 +288,7 @@ export function InvitationsSection() {
 
         {/* Party Filter Pills */}
         <div className="inline-flex items-center gap-1.5 p-1 bg-neutral-200/60 rounded-2xl overflow-x-auto">
-          {(['ALL', 'TDP', 'JSP', 'BJP', 'IND'] as const).map((party) => (
+          {(['ALL', 'TDP', 'JSP', 'BJP'] as const).map((party) => (
             <button
               key={party}
               onClick={() => setSelectedParty(party)}
@@ -306,7 +306,7 @@ export function InvitationsSection() {
 
       {/* Results Count & Cloud Status */}
       <div className="flex items-center justify-between text-xs text-neutral-500 px-1">
-        <span>Showing {filteredCorporators.length} of 65 invitations</span>
+        <span>Showing {filteredCorporators.length} of 64 invitations</span>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1 text-[11px] bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200/60 font-semibold">
             <Globe className="w-3 h-3 text-emerald-600" />
@@ -335,11 +335,14 @@ export function InvitationsSection() {
               className="bg-white border border-neutral-200/90 rounded-3xl p-4 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)] transition-all duration-200 group"
             >
               <div>
-                {/* Header: Division + Party */}
+                {/* Header: Division + Avatar + Party */}
                 <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-neutral-900 text-white tracking-tight">
-                    Div {c.ward}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <CandidateAvatar wardNumber={c.ward} candidateName={c.nameEn} size="sm" />
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-neutral-900 text-white tracking-tight">
+                      Div {c.ward}
+                    </span>
+                  </div>
                   <PartyBadge party={c.party} size="sm" />
                 </div>
 
@@ -464,15 +467,19 @@ export function InvitationsSection() {
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-neutral-100 flex items-center justify-between gap-3 bg-neutral-50/50">
               <div className="flex items-center gap-3">
-                <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-neutral-900 text-white">
-                  Div {previewWard.ward}
-                </span>
+                <CandidateAvatar wardNumber={previewWard.ward} candidateName={previewWard.nameEn} size="md" />
                 <div>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-neutral-900 text-white">
+                      Div {previewWard.ward}
+                    </span>
+                    <PartyBadge party={previewWard.party} size="sm" />
+                  </div>
                   <h3 className="text-base font-bold text-neutral-900 leading-tight">
                     {previewWard.nameTe}
                   </h3>
                   <p className="text-xs text-neutral-500 font-medium">
-                    {previewWard.nameEn} • <span className="font-semibold">{previewWard.party}</span>
+                    {previewWard.nameEn}
                   </p>
                 </div>
               </div>

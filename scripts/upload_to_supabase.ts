@@ -15,6 +15,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 export async function uploadAllInvitationsToSupabase() {
   const invitationsDir = path.join(process.cwd(), 'public', 'invitations');
   const qrDir = path.join(invitationsDir, 'qr');
+  const candidatesDir = path.join(invitationsDir, 'Guntur_Ward_Images');
 
   console.log('Ensuring Supabase storage bucket "invitations" exists...');
   const { data: buckets } = await supabase.storage.listBuckets();
@@ -62,6 +63,28 @@ export async function uploadAllInvitationsToSupabase() {
         }
       })
     );
+  }
+
+  // Also sync candidate photos to Supabase Storage
+  if (fs.existsSync(candidatesDir)) {
+    const candidateFiles = fs.readdirSync(candidatesDir).filter((f) => f.endsWith('.webp'));
+    console.log(`Syncing ${candidateFiles.length} candidate photos to Supabase storage...`);
+    for (let i = 0; i < candidateFiles.length; i += 10) {
+      const batch = candidateFiles.slice(i, i + 10);
+      await Promise.all(
+        batch.map(async (f) => {
+          try {
+            const buf = fs.readFileSync(path.join(candidatesDir, f));
+            await supabase.storage.from('invitations').upload(`candidates/${f}`, buf, {
+              contentType: 'image/webp',
+              upsert: true,
+            });
+          } catch (e: any) {
+            console.error(`Exception uploading candidate ${f}:`, e?.message);
+          }
+        })
+      );
+    }
   }
 
   console.log(`Successfully uploaded ${successCount}/${files.length} invitations online to Supabase!`);

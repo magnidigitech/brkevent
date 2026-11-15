@@ -14,6 +14,7 @@ import {
   getPendingQueue,
   updateCachedWards,
 } from '@/lib/offline/offlineSync';
+import { cacheCandidatePhotosInLocalStorage } from '@/lib/candidatePhotos';
 
 export default function ScannerPage() {
   const router = useRouter();
@@ -26,8 +27,10 @@ export default function ScannerPage() {
 
   // Initialize offline storage & automatic background sync loop
   useEffect(() => {
-    // 1. Immediately initialize offline storage so all 76 divisions are cached
+    // 1. Immediately initialize offline storage so all divisions are cached
     initOfflineStorage();
+    // Pre-cache all candidate photos directly into localStorage for 0ms offline access
+    cacheCandidatePhotosInLocalStorage();
     setPendingCount(getPendingQueue().length);
     if (typeof navigator !== 'undefined') {
       setIsOnline(navigator.onLine);
