@@ -4,8 +4,16 @@ import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 
 export const metadata: Metadata = {
-  title: 'Bhashyam Ramakrishna Event Entry System',
-  description: 'Official invitation verification and entry management for Bhashyam Ramakrishna’s event.',
+  title: 'Grand Felicitation by Shri Bhashyam Rama Krishna Garu, MP Rajyasabha',
+  description: 'Official invitation verification and entry pass system for Grand Felicitation by Shri Bhashyam Rama Krishna Garu, MP Rajyasabha.',
+  metadataBase: new URL('https://event.bhashyamramakrishna.in'),
+  openGraph: {
+    title: 'Grand Felicitation by Shri Bhashyam Rama Krishna Garu, MP Rajyasabha',
+    description: 'Official invitation verification and entry pass system.',
+    url: 'https://event.bhashyamramakrishna.in',
+    siteName: 'event.bhashyamramakrishna.in',
+    type: 'website',
+  },
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,

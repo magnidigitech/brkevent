@@ -52,6 +52,21 @@ export function getCandidatePhotoUrls(wardNumber: number): {
   };
 }
 
+export function getCandidateJpegPhotoUrls(wardNumber: number): {
+  localUrl: string;
+  onlineUrl: string;
+  hasPhoto: boolean;
+} {
+  const fileName = `Ward_${wardNumber.toString().padStart(2, '0')}.jpg`;
+  const hasPhoto = WARDS_WITH_PHOTOS.has(wardNumber);
+
+  return {
+    localUrl: `/invitations/Guntur_Ward_Images/${fileName}`,
+    onlineUrl: `${SUPABASE_CDN_CANDIDATES}/${fileName}`,
+    hasPhoto,
+  };
+}
+
 const LOCAL_STORAGE_KEY_PREFIX = 'brk_candidate_photo_';
 
 /**

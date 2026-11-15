@@ -1,16 +1,85 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { WardClientView } from './WardClientView';
 import { validateDivisionHash } from '@/lib/utils/divisionHash';
 import { ShieldAlert, ShieldX, LogIn, ArrowLeft } from 'lucide-react';
+import { WARDS_SEED_DATA } from '@/data/wardsSeed';
+import WINNING_CORPORATORS from '@/data/winningCorporators.json';
+import { getCandidateJpegPhotoUrls } from '@/lib/candidatePhotos';
 
 interface PageProps {
   params: Promise<{ wardSlug: string }>;
 }
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { wardSlug } = await params;
+  const cleanSlug = wardSlug.toLowerCase().trim();
+  const match = cleanSlug.match(/^(ward|division)([0-9]+)(?:-([a-z0-9]{4}))?$/);
+
+  const defaultTitle = 'Grand Felicitation by Shri Bhashyam Rama Krishna Garu, MP Rajyasabha';
+  const defaultDesc = 'Official Digital Invitation Pass and Entry Management System.';
+
+  if (!match) {
+    return {
+      title: defaultTitle,
+      description: defaultDesc,
+    };
+  }
+
+  const wardNumber = parseInt(match[2], 10);
+  const seedWard = WARDS_SEED_DATA.find((w) => w.ward_number === wardNumber);
+  const winningCorp = WINNING_CORPORATORS.find((w) => w.ward === wardNumber);
+
+  const candidateName = winningCorp ? winningCorp.nameEn : (seedWard?.candidate_name || `Division ${wardNumber}`);
+
+  const title = 'Grand Felicitation by Shri Bhashyam Rama Krishna Garu, MP Rajyasabha';
+  const description = `Official Invitation Pass for ${candidateName} - Division ${wardNumber}`;
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://event.bhashyamramakrishna.in';
+  const canonicalUrl = `${baseUrl}/${cleanSlug}`;
+
+  const { onlineUrl, hasPhoto } = getCandidateJpegPhotoUrls(wardNumber);
+  const imageUrl = hasPhoto
+    ? onlineUrl
+    : `https://atkkyaepukxusocjtycm.supabase.co/storage/v1/object/public/invitations/${wardNumber}.jpg`;
+
+  return {
+    title,
+    description,
+    metadataBase: new URL(baseUrl),
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      siteName: 'event.bhashyamramakrishna.in',
+      images: [
+        {
+          url: imageUrl,
+          width: hasPhoto ? 400 : 1200,
+          height: hasPhoto ? 400 : 1500,
+          alt: `${candidateName} - Division ${wardNumber}`,
+          type: 'image/jpeg',
+        },
+      ],
+      type: 'website',
+      locale: 'en_IN',
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+      images: [imageUrl],
+    },
+  };
+}
 
 export default async function WardInvitationPage({ params }: PageProps) {
   const { wardSlug } = await params;
