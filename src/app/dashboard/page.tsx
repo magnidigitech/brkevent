@@ -42,6 +42,9 @@ import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { InvitationsSection } from '@/components/InvitationsSection';
 import { createClient } from '@/lib/supabase/client';
 import { formatInKolkataTime } from '@/lib/utils/date';
+import WINNING_CORPORATORS from '@/data/winningCorporators.json';
+
+const WINNING_WARD_NUMBERS = new Set(WINNING_CORPORATORS.map((w) => w.ward));
 
 export type DashboardTab = 'entries' | 'food' | 'history' | 'audit' | 'invitations';
 
@@ -64,6 +67,7 @@ export default function DashboardPage() {
   const [partyFilter, setPartyFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL'); // 'ALL' | 'ARRIVED' | 'NOT_ARRIVED' | 'OVER_ALLOWANCE'
   const [foodFilter, setFoodFilter] = useState<string>('ALL'); // 'ALL' | 'CONFIRMED' | 'UNCONFIRMED' | 'UNSET' | 'MISMATCH'
+  const [scopeFilter, setScopeFilter] = useState<'WINNERS' | 'ALL'>('WINNERS');
 
   // Admin Ward Edit Modal State
   const [selectedWardForEdit, setSelectedWardForEdit] = useState<WardWithStats | null>(null);
@@ -230,6 +234,61 @@ export default function DashboardPage() {
     }
   };
 
+  // Active scope wards (Winning 64 vs All 76)
+  const activeScopeWards = useMemo(() => {
+    if (scopeFilter === 'WINNERS') {
+      return wards.filter((w) => WINNING_WARD_NUMBERS.has(w.ward_number));
+    }
+    return wards;
+  }, [wards, scopeFilter]);
+
+  // Recalculate summary metrics dynamically based on active scope
+  const displaySummary = useMemo(() => {
+    const totalCount = activeScopeWards.length;
+    let totalEntered = 0;
+    let wardsWithArrivals = 0;
+    let wardsWithoutArrivals = 0;
+    let wardsExceedingAllowance = 0;
+    let totalExcessPeople = 0;
+    let expectedVegTotal = 0;
+    let expectedNonVegTotal = 0;
+    let wardsUnconfirmedFood = 0;
+
+    activeScopeWards.forEach((w) => {
+      totalEntered += w.total_entered;
+      if (w.total_entered > 0) wardsWithArrivals += 1;
+      else wardsWithoutArrivals += 1;
+
+      if (w.total_entered > w.allowance) {
+        wardsExceedingAllowance += 1;
+        totalExcessPeople += w.total_entered - w.allowance;
+      }
+
+      if (w.expected_veg !== null && w.expected_veg !== undefined) {
+        expectedVegTotal += w.expected_veg;
+      }
+      if (w.expected_non_veg !== null && w.expected_non_veg !== undefined) {
+        expectedNonVegTotal += w.expected_non_veg;
+      }
+      if (!w.food_confirmed) {
+        wardsUnconfirmedFood += 1;
+      }
+    });
+
+    return {
+      total_entered: totalEntered,
+      normal_total_allowance: totalCount * 5,
+      wards_with_arrivals: wardsWithArrivals,
+      wards_without_arrivals: wardsWithoutArrivals,
+      wards_exceeding_allowance: wardsExceedingAllowance,
+      total_excess_people: totalExcessPeople,
+      expected_veg_total: expectedVegTotal,
+      expected_non_veg_total: expectedNonVegTotal,
+      wards_unconfirmed_food: wardsUnconfirmedFood,
+      total_wards: totalCount,
+    };
+  }, [activeScopeWards]);
+
   // Instant AJAX Filter & Priority Sort Wards
   const filteredWards = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -248,7 +307,7 @@ export default function DashboardPage() {
       ? parseInt(wardPrefixMatch[1], 10)
       : null;
 
-    const matches = wards.filter((w) => {
+    const matches = activeScopeWards.filter((w) => {
       if (q) {
         let matchWardNo = false;
         if (targetWardNum !== null) {
@@ -308,7 +367,7 @@ export default function DashboardPage() {
     }
 
     return matches;
-  }, [wards, searchQuery, partyFilter, activeTab, statusFilter, foodFilter]);
+  }, [activeScopeWards, searchQuery, partyFilter, activeTab, statusFilter, foodFilter]);
 
   return (
     <div className="flex-1 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full pb-28 sm:pb-8">
@@ -391,7 +450,7 @@ export default function DashboardPage() {
       </div>
 
       {/* METRIC STAT CARDS - ADAPTIVE TO ACTIVE SEGMENT */}
-      {summary && (
+      {displaySummary && (
         <>
           {/* SEGMENT 1: GATE ENTRIES METRICS */}
           {activeTab === 'entries' && (
@@ -403,14 +462,14 @@ export default function DashboardPage() {
                   <Users className="w-4 h-4 text-neutral-400" />
                 </div>
                 <div className="mt-2.5">
-                  <span className="text-3xl font-semibold tracking-tight text-neutral-900">{summary.total_entered}</span>
-                  <span className="text-xs text-neutral-400 ml-1.5">/ {summary.normal_total_allowance} cap</span>
+                  <span className="text-3xl font-semibold tracking-tight text-neutral-900">{displaySummary.total_entered}</span>
+                  <span className="text-xs text-neutral-400 ml-1.5">/ {displaySummary.normal_total_allowance} cap</span>
                 </div>
                 <div className="mt-3 w-full bg-neutral-100 rounded-full h-1.5 overflow-hidden">
                   <div
                     className="bg-neutral-900 h-1.5 rounded-full transition-all duration-500"
                     style={{
-                      width: `${Math.min(100, (summary.total_entered / summary.normal_total_allowance) * 100)}%`,
+                      width: `${Math.min(100, (displaySummary.total_entered / displaySummary.normal_total_allowance) * 100)}%`,
                     }}
                   />
                 </div>
@@ -423,37 +482,37 @@ export default function DashboardPage() {
                   <Building2 className="w-4 h-4 text-neutral-400" />
                 </div>
                 <div className="mt-2.5 flex items-baseline gap-1.5">
-                  <span className="text-3xl font-semibold tracking-tight text-neutral-900">{summary.wards_with_arrivals}</span>
-                  <span className="text-xs text-neutral-400">/ 76 Divisions</span>
+                  <span className="text-3xl font-semibold tracking-tight text-neutral-900">{displaySummary.wards_with_arrivals}</span>
+                  <span className="text-xs text-neutral-400">/ {displaySummary.total_wards} Divisions</span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2.5">
-                  <span className="font-medium text-neutral-800">{summary.wards_without_arrivals}</span> pending
+                  <span className="font-medium text-neutral-800">{displaySummary.wards_without_arrivals}</span> pending
                 </p>
               </div>
 
               {/* Excess People & Wards */}
               <div className={`rounded-2xl p-5 border transition-all flex flex-col justify-between ${
-                summary.wards_exceeding_allowance > 0
+                displaySummary.wards_exceeding_allowance > 0
                   ? 'bg-rose-50/50 border-rose-200/80 shadow-[0_2px_12px_rgba(225,29,72,0.06)]'
                   : 'bg-white border-black/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.03)]'
               }`}>
                 <div className="flex items-center justify-between text-neutral-500">
-                  <span className={`text-xs font-medium ${summary.wards_exceeding_allowance > 0 ? 'text-rose-700' : ''}`}>
+                  <span className={`text-xs font-medium ${displaySummary.wards_exceeding_allowance > 0 ? 'text-rose-700' : ''}`}>
                     Excess Attendees
                   </span>
-                  <AlertTriangle className={`w-4 h-4 ${summary.wards_exceeding_allowance > 0 ? 'text-rose-600' : 'text-neutral-400'}`} />
+                  <AlertTriangle className={`w-4 h-4 ${displaySummary.wards_exceeding_allowance > 0 ? 'text-rose-600' : 'text-neutral-400'}`} />
                 </div>
                 <div className="mt-2.5">
-                  <span className={`text-3xl font-semibold tracking-tight ${summary.total_excess_people > 0 ? 'text-rose-700' : 'text-neutral-900'}`}>
-                    +{summary.total_excess_people}
+                  <span className={`text-3xl font-semibold tracking-tight ${displaySummary.total_excess_people > 0 ? 'text-rose-700' : 'text-neutral-900'}`}>
+                    +{displaySummary.total_excess_people}
                   </span>
-                  <span className={`text-xs ml-1.5 ${summary.total_excess_people > 0 ? 'text-rose-600' : 'text-neutral-400'}`}>
+                  <span className={`text-xs ml-1.5 ${displaySummary.total_excess_people > 0 ? 'text-rose-600' : 'text-neutral-400'}`}>
                     over 5/division
                   </span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2.5">
-                  <span className={`font-medium ${summary.wards_exceeding_allowance > 0 ? 'text-rose-700' : 'text-neutral-800'}`}>
-                    {summary.wards_exceeding_allowance}
+                  <span className={`font-medium ${displaySummary.wards_exceeding_allowance > 0 ? 'text-rose-700' : 'text-neutral-800'}`}>
+                    {displaySummary.wards_exceeding_allowance}
                   </span> divisions exceeding
                 </p>
               </div>
@@ -466,12 +525,12 @@ export default function DashboardPage() {
                 </div>
                 <div className="mt-2.5">
                   <span className="text-3xl font-semibold tracking-tight text-neutral-900">
-                    {Math.max(0, summary.normal_total_allowance - summary.total_entered)}
+                    {Math.max(0, displaySummary.normal_total_allowance - displaySummary.total_entered)}
                   </span>
                   <span className="text-xs text-neutral-400 ml-1.5">slots left</span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2.5">
-                  Standard cap: 380 total
+                  Standard cap: {displaySummary.normal_total_allowance} total
                 </p>
               </div>
             </div>
@@ -487,7 +546,7 @@ export default function DashboardPage() {
                   <Utensils className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div className="mt-2.5">
-                  <span className="text-3xl font-semibold tracking-tight text-neutral-900">{summary.expected_veg_total}</span>
+                  <span className="text-3xl font-semibold tracking-tight text-neutral-900">{displaySummary.expected_veg_total}</span>
                   <span className="text-xs text-neutral-400 ml-1.5">meals</span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2.5">
@@ -502,7 +561,7 @@ export default function DashboardPage() {
                   <Utensils className="w-4 h-4 text-amber-600" />
                 </div>
                 <div className="mt-2.5">
-                  <span className="text-3xl font-semibold tracking-tight text-neutral-900">{summary.expected_non_veg_total}</span>
+                  <span className="text-3xl font-semibold tracking-tight text-neutral-900">{displaySummary.expected_non_veg_total}</span>
                   <span className="text-xs text-neutral-400 ml-1.5">meals</span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2.5">
@@ -518,9 +577,9 @@ export default function DashboardPage() {
                 </div>
                 <div className="mt-2.5">
                   <span className="text-3xl font-semibold tracking-tight text-neutral-900">
-                    {summary.expected_veg_total + summary.expected_non_veg_total}
+                    {displaySummary.expected_veg_total + displaySummary.expected_non_veg_total}
                   </span>
-                  <span className="text-xs text-neutral-400 ml-1.5">/ 380 baseline</span>
+                  <span className="text-xs text-neutral-400 ml-1.5">/ {displaySummary.normal_total_allowance} baseline</span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2.5">
                   Combined veg + non-veg total
@@ -535,12 +594,12 @@ export default function DashboardPage() {
                 </div>
                 <div className="mt-2.5 flex items-baseline gap-1.5">
                   <span className="text-3xl font-semibold tracking-tight text-neutral-900">
-                    {76 - summary.wards_unconfirmed_food}
+                    {displaySummary.total_wards - displaySummary.wards_unconfirmed_food}
                   </span>
-                  <span className="text-xs text-neutral-400">/ 76 Confirmed</span>
+                  <span className="text-xs text-neutral-400">/ {displaySummary.total_wards} Confirmed</span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-2.5">
-                  <span className="font-medium text-amber-700">{summary.wards_unconfirmed_food}</span> divisions pending confirmation
+                  <span className="font-medium text-amber-700">{displaySummary.wards_unconfirmed_food}</span> divisions pending confirmation
                 </p>
               </div>
             </div>
@@ -551,15 +610,15 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-7">
               <div className="bg-white rounded-2xl p-5 border border-black/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
                 <span className="text-xs font-medium text-neutral-500 block">Total Entered</span>
-                <span className="text-3xl font-semibold tracking-tight text-neutral-900 mt-1 block">{summary.total_entered}</span>
+                <span className="text-3xl font-semibold tracking-tight text-neutral-900 mt-1 block">{displaySummary.total_entered}</span>
               </div>
               <div className="bg-white rounded-2xl p-5 border border-black/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
                 <span className="text-xs font-medium text-neutral-500 block">Divisions Arrived</span>
-                <span className="text-3xl font-semibold tracking-tight text-neutral-900 mt-1 block">{summary.wards_with_arrivals} / 76</span>
+                <span className="text-3xl font-semibold tracking-tight text-neutral-900 mt-1 block">{displaySummary.wards_with_arrivals} / {displaySummary.total_wards}</span>
               </div>
               <div className="bg-white rounded-2xl p-5 border border-black/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
                 <span className="text-xs font-medium text-neutral-500 block">Total Excess</span>
-                <span className="text-3xl font-semibold tracking-tight text-rose-700 mt-1 block">+{summary.total_excess_people}</span>
+                <span className="text-3xl font-semibold tracking-tight text-rose-700 mt-1 block">+{displaySummary.total_excess_people}</span>
               </div>
               <div className="bg-white rounded-2xl p-5 border border-black/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
                 <span className="text-xs font-medium text-neutral-500 block">Recorded Batches</span>
@@ -764,6 +823,16 @@ export default function DashboardPage() {
 
               {/* Filter Dropdowns */}
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Scope Filter */}
+                <select
+                  value={scopeFilter}
+                  onChange={(e) => setScopeFilter(e.target.value as 'WINNERS' | 'ALL')}
+                  className="px-3.5 py-2 text-xs font-semibold border border-amber-300 rounded-xl bg-amber-50/80 text-amber-900 focus:border-amber-600 focus:outline-none transition-colors"
+                >
+                  <option value="WINNERS">Winning Corporators (64)</option>
+                  <option value="ALL">All Divisions (76)</option>
+                </select>
+
                 {/* Party Filter */}
                 <select
                   value={partyFilter}
@@ -806,7 +875,7 @@ export default function DashboardPage() {
             {/* Quick Result Counter */}
             <div className="flex items-center justify-between text-xs text-neutral-400 pt-1 border-t border-black/[0.04]">
               <span>
-                Showing <strong className="text-neutral-700 font-semibold">{filteredWards.length}</strong> of {wards.length} divisions
+                Showing <strong className="text-neutral-700 font-semibold">{filteredWards.length}</strong> of {activeScopeWards.length} divisions
                 {searchQuery && ` matching "${searchQuery}"`}
               </span>
               <span className="hidden sm:inline">5-person total allowance per division</span>
@@ -1115,6 +1184,16 @@ export default function DashboardPage() {
 
               {/* Filter Dropdowns */}
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Scope Filter */}
+                <select
+                  value={scopeFilter}
+                  onChange={(e) => setScopeFilter(e.target.value as 'WINNERS' | 'ALL')}
+                  className="px-3.5 py-2 text-xs font-semibold border border-amber-300 rounded-xl bg-amber-50/80 text-amber-900 focus:border-amber-600 focus:outline-none transition-colors"
+                >
+                  <option value="WINNERS">Winning Corporators (64)</option>
+                  <option value="ALL">All Divisions (76)</option>
+                </select>
+
                 {/* Party Filter */}
                 <select
                   value={partyFilter}
@@ -1158,7 +1237,7 @@ export default function DashboardPage() {
             {/* Quick Result Counter */}
             <div className="flex items-center justify-between text-xs text-neutral-400 pt-1 border-t border-black/[0.04]">
               <span>
-                Showing <strong className="text-neutral-700 font-semibold">{filteredWards.length}</strong> of {wards.length} catering targets
+                Showing <strong className="text-neutral-700 font-semibold">{filteredWards.length}</strong> of {activeScopeWards.length} catering targets
                 {searchQuery && ` matching "${searchQuery}"`}
               </span>
               <span className="hidden sm:inline">Baseline: 5 plates per division invitation</span>

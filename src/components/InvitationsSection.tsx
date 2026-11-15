@@ -32,6 +32,7 @@ export interface WinningCorporator {
   party: 'TDP' | 'JSP' | 'BJP';
   nameTe: string;
   nameAnu: string;
+  phone?: string;
 }
 
 const SUPABASE_CDN_BASE = 'https://atkkyaepukxusocjtycm.supabase.co/storage/v1/object/public/invitations';
