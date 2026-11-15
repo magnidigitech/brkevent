@@ -42,6 +42,7 @@ import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { InvitationsSection } from '@/components/InvitationsSection';
 import { createClient } from '@/lib/supabase/client';
 import { formatInKolkataTime } from '@/lib/utils/date';
+import { stopAllCameraStreams } from '@/lib/camera/cameraManager';
 import WINNING_CORPORATORS from '@/data/winningCorporators.json';
 
 const WINNING_WARD_NUMBERS = new Set(WINNING_CORPORATORS.map((w) => w.ward));
@@ -115,6 +116,9 @@ export default function DashboardPage() {
 
   // Multi-Device Realtime & Fast AJAX Sync (reflects phone arrivals across devices without page reload)
   useEffect(() => {
+    // Forcefully shut down any lingering scanner camera streams when on dashboard
+    stopAllCameraStreams();
+
     loadDashboardData();
 
     // Rapid AJAX polling every 3 seconds while tab is visible

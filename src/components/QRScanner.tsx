@@ -11,6 +11,7 @@ import {
   getCachedCanvaResolution,
   cacheCanvaResolution,
 } from '@/lib/offline/offlineSync';
+import { stopAllCameraStreams } from '@/lib/camera/cameraManager';
 
 interface QRScannerProps {
   onWardScanned: (wardNumber: number) => void;
@@ -51,24 +52,32 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
   const isMountedRef = useRef<boolean>(true);
   const qrRegionId = 'qr-reader-container';
 
-  // Stop scanner safely
+  // Stop scanner safely and release hardware
   const stopScanner = useCallback(async () => {
-    if (!scannerRef.current) return;
-    if (isTransitioningRef.current) return;
+    // Force stop all camera hardware tracks first
+    stopAllCameraStreams();
+
+    if (!scannerRef.current) {
+      isTransitioningRef.current = false;
+      return;
+    }
 
     try {
-      isTransitioningRef.current = true;
-      // Check if scanner is currently active before stopping
-      if (scannerRef.current.isScanning) {
-        await scannerRef.current.stop();
+      const scanner = scannerRef.current;
+      scannerRef.current = null;
+      if (scanner.isScanning) {
+        await scanner.stop();
       }
+      try {
+        await scanner.clear();
+      } catch {}
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      // Suppress normal transition or abort warnings
       if (!msg.includes('already under transition') && !msg.includes('not running') && !msg.includes('media was removed')) {
         console.warn('Handled stopScanner warning:', err);
       }
     } finally {
+      stopAllCameraStreams();
       isTransitioningRef.current = false;
     }
   }, []);
@@ -118,7 +127,6 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
   // Start scanner safely with transition protection
   const startScanner = useCallback(async () => {
     if (!isMountedRef.current || isPaused) return;
-    if (isTransitioningRef.current) return;
 
     setCameraError(null);
     setScannedUrlError(null);
@@ -128,7 +136,10 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     try {
       const { Html5Qrcode } = await import('html5-qrcode');
 
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current || isPaused) {
+        stopAllCameraStreams();
+        return;
+      }
 
       // Verify DOM element exists
       const containerEl = document.getElementById(qrRegionId);
@@ -144,7 +155,9 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
 
       // If already scanning, stop first
       if (scannerRef.current.isScanning) {
-        await scannerRef.current.stop();
+        try {
+          await scannerRef.current.stop();
+        } catch {}
       }
 
       const config = {
@@ -165,6 +178,23 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         }
       );
 
+      // CRITICAL CHECK: If component unmounted while camera stream was starting up, shut down immediately
+      if (!isMountedRef.current || isPaused) {
+        stopAllCameraStreams();
+        if (scannerRef.current) {
+          try {
+            if (scannerRef.current.isScanning) {
+              await scannerRef.current.stop();
+            }
+          } catch {}
+          try {
+            await scannerRef.current.clear();
+          } catch {}
+          scannerRef.current = null;
+        }
+        return;
+      }
+
       if (isMountedRef.current) {
         setScannerActive(true);
       }
@@ -178,7 +208,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         msg.includes('media was removed') ||
         msg.includes('already under transition')
       ) {
-        // Safe lifecycle transition, do not show error banner to staff
+        stopAllCameraStreams();
         return;
       }
 
@@ -207,6 +237,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     isMountedRef.current = true;
 
     if (isPaused) {
+      stopAllCameraStreams();
       stopScanner();
     } else if (scannerActive) {
       // Small timeout allows DOM to fully settle before requesting video stream
@@ -215,11 +246,15 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
           startScanner();
         }
       }, 100);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        stopAllCameraStreams();
+      };
     }
 
     return () => {
       isMountedRef.current = false;
+      stopAllCameraStreams();
       stopScanner();
     };
   }, [isPaused, scannerActive, startScanner, stopScanner]);

@@ -16,6 +16,7 @@ import {
 } from '@/lib/offline/offlineSync';
 import { cacheCandidatePhotosInLocalStorage } from '@/lib/candidatePhotos';
 import { cacheAllInvitationsLocally } from '@/lib/offline/invitationCache';
+import { stopAllCameraStreams } from '@/lib/camera/cameraManager';
 
 export default function ScannerPage() {
   const router = useRouter();
@@ -41,7 +42,18 @@ export default function ScannerPage() {
       window.history.replaceState({ scannerRoot: true }, '', window.location.href);
       window.history.pushState({ scannerActive: true }, '', window.location.href);
     }
+
+    return () => {
+      stopAllCameraStreams();
+    };
   }, []);
+
+  // When a ward is scanned or open, force stop camera
+  useEffect(() => {
+    if (selectedWardNumber !== null) {
+      stopAllCameraStreams();
+    }
+  }, [selectedWardNumber]);
 
   // Initialize offline storage & automatic background sync loop
   useEffect(() => {
