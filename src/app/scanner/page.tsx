@@ -23,11 +23,11 @@ export default function ScannerPage() {
         if (data?.authenticated && data?.profile) {
           setUserProfile(data.profile);
         } else {
-          window.location.href = '/login';
+          setUserProfile(null);
         }
       })
       .catch(() => {
-        window.location.href = '/login';
+        setUserProfile(null);
       })
       .finally(() => {
         setCheckingAuth(false);

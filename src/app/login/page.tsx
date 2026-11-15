@@ -42,18 +42,6 @@ function LoginForm() {
   const [biometricSupported, setBiometricSupported] = useState<boolean>(false);
   const [savedBiometric, setSavedBiometric] = useState<StoredBiometric | null>(null);
 
-  // If already logged in, redirect immediately to target page
-  useEffect(() => {
-    fetch('/api/auth/profile')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.authenticated && data?.profile) {
-          window.location.href = returnUrl;
-        }
-      })
-      .catch(() => {});
-  }, [returnUrl]);
-
   // Check WebAuthn support on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
