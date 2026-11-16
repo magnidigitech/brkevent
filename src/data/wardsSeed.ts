@@ -72,7 +72,7 @@ export const WARDS_SEED_DATA: WardSeed[] = [
   },
   {
     "ward_number": 10,
-    "candidate_name": "Sanakkayala Uma Shankar",
+    "candidate_name": "Dr. Shanakkayala Uma Shankar",
     "party": "BJP",
     "allowance": 5,
     "phone": "9063901236"

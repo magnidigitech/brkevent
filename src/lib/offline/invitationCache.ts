@@ -1,6 +1,6 @@
 import WINNING_CORPORATORS from '@/data/winningCorporators.json';
 
-const CACHE_NAME = 'brk-invitations-v2';
+const CACHE_NAME = 'brk-invitations-v3';
 const SUPABASE_CDN_BASE = 'https://atkkyaepukxusocjtycm.supabase.co/storage/v1/object/public/invitations';
 
 /**
