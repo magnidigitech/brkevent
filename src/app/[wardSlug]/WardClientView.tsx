@@ -23,12 +23,16 @@ export function WardClientView({
   isAdmin,
 }: WardClientViewProps) {
   const seedWard = WARDS_SEED_DATA.find((w) => w.ward_number === wardNumber);
+  const isVipInitial = wardNumber >= 101;
   const [candidateName, setCandidateName] = useState<string>(
-    seedWard?.candidate_name || `Division ${wardNumber}`
+    seedWard?.candidate_name || (isVipInitial ? `VIP Pass #${wardNumber}` : `Division ${wardNumber}`)
   );
-  const [party, setParty] = useState<PartyAffiliation>(seedWard?.party || 'TDP');
+  const [party, setParty] = useState<PartyAffiliation>(seedWard?.party || (isVipInitial ? 'VIP' : 'TDP'));
+  const [allowance, setAllowance] = useState<number>(seedWard?.allowance || 5);
   const [qrSvg, setQrSvg] = useState<string>('');
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
+
+  const isVip = wardNumber >= 101 || ['VIP', 'SPECIAL', 'GUEST', 'ALLIANCE'].includes(party);
 
   // The canonical URL to encode into the QR code
   const targetUrl = typeof window !== 'undefined'
@@ -55,9 +59,10 @@ export function WardClientView({
     fetch(`/api/wards/${wardNumber}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.success && data?.ward?.candidate_name) {
-          setCandidateName(data.ward.candidate_name);
+        if (data?.success && data?.ward) {
+          if (data.ward.candidate_name) setCandidateName(data.ward.candidate_name);
           if (data.ward.party) setParty(data.ward.party);
+          if (data.ward.allowance) setAllowance(data.ward.allowance);
         }
       })
       .catch(() => {});
@@ -149,8 +154,10 @@ export function WardClientView({
         {/* Invitee Details Section */}
         <div className="pt-4 px-6 pb-2 text-center flex flex-col items-center">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-neutral-900 text-white shadow-2xs">
-              Division {wardNumber}
+            <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-2xs ${
+              isVip ? 'bg-purple-700 text-white' : 'bg-neutral-900 text-white'
+            }`}>
+              {isVip ? `Pass #${wardNumber}` : `Division ${wardNumber}`}
             </span>
             <PartyBadge party={party} size="sm" />
           </div>
@@ -159,8 +166,8 @@ export function WardClientView({
             {candidateName}
           </h3>
 
-          <span className="text-xs text-neutral-400 mt-1 font-normal">
-            Admit: 5 Persons Total
+          <span className="text-xs text-neutral-500 mt-1 font-medium">
+            Admit: {allowance} {allowance === 1 ? 'Person' : 'Persons Total'}
           </span>
         </div>
 
@@ -220,7 +227,7 @@ export function WardClientView({
                   {candidateName}
                 </span>
                 <span className="text-[11px] text-neutral-500 font-medium">
-                  Division {wardNumber} ({party})
+                  {isVip ? `Pass #${wardNumber}` : `Division ${wardNumber}`} ({party})
                 </span>
               </div>
             </div>

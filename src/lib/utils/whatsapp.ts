@@ -76,22 +76,32 @@ export function formatWhatsAppMessage(
   domain: string = 'https://event.bhashyamramakrishna.in'
 ): string {
   const hash = getDivisionHash(ward.ward_number);
-  const url = `${domain.replace(/\/$/, '')}/division${ward.ward_number}-${hash}`;
+  const isVip = ward.ward_number >= 101 || ['VIP', 'SPECIAL', 'GUEST', 'ALLIANCE'].includes(ward.party);
+  // For VIP: just 101-4 digits (e.g. /101-g1lk)
+  // For corporator: /division{N}-{hash}
+  const urlPath = isVip ? `${ward.ward_number}-${hash}` : `division${ward.ward_number}-${hash}`;
+  const url = `${domain.replace(/\/$/, '')}/${urlPath}`;
   const allowance = ward.allowance ?? 5;
   const entered = ward.total_entered ?? 0;
   const status = entered > 0 ? `${entered} entered` : 'Not yet entered';
 
   let msg = template;
 
+  if (isVip) {
+    // Adapt template for VIP: replace "Division:" with "Pass:"
+    msg = msg.replace(/• \*Division:\* Division \{division\} \(\{party\}\)/gi, `• *Pass:* VIP Pass #${ward.ward_number} ({party})`);
+    msg = msg.replace(/• \*Division:\* Division \{division\}/gi, `• *Pass:* VIP Pass #${ward.ward_number}`);
+  }
+
   // Replace placeholders: support both {var} and {{var}} for division and legacy ward
   const replacements: Record<string, string> = {
     name: ward.candidate_name,
     candidate_name: ward.candidate_name,
-    division: String(ward.ward_number),
+    division: isVip ? `Pass #${ward.ward_number}` : String(ward.ward_number),
     division_number: String(ward.ward_number),
-    ward: String(ward.ward_number),
+    ward: isVip ? `Pass #${ward.ward_number}` : String(ward.ward_number),
     ward_number: String(ward.ward_number),
-    party: ward.party,
+    party: isVip && ward.party === 'VIP' ? 'VIP Invitee' : isVip && ward.party === 'SPECIAL' ? 'Special Guest' : ward.party,
     allowance: String(allowance),
     url: url,
     entered: String(entered),

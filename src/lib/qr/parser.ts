@@ -77,24 +77,27 @@ export function parseWardQRCode(rawScannedText: string, currentHost?: string): Q
     };
   }
 
-  // Check path pattern: /ward1 to /ward76 OR /division1 to /division76 (with optional tamper-proof hash)
+  // Check path pattern:
+  // 1. VIP/Special passes: /101-xxxx or /101 or /vip101-xxxx
+  // 2. Division links: /division1-xxxx or /division101-xxxx
+  // 3. Official printed cards: /ward1 through /ward76
   const pathname = parsedUrl.pathname.replace(/\/+$/, ''); // Remove trailing slash
-  const wardMatch = pathname.match(/^\/(?:ward|division)([0-9]+)(?:-[a-z0-9]{4,8})?$/i);
+  const wardMatch = pathname.match(/^\/(?:(?:ward|division|vip)-?)?([0-9]+)(?:-[a-z0-9]{4,8})?$/i);
 
   if (!wardMatch) {
     return {
       valid: false,
       originalUrl: trimmed,
-      error: `Invalid invitation path "${pathname}". Expected /division1 or /ward1 through 76.`,
+      error: `Invalid invitation path "${pathname}".`,
     };
   }
 
   const wardNumber = parseInt(wardMatch[1], 10);
-  if (isNaN(wardNumber) || wardNumber < 1 || wardNumber > 76) {
+  if (isNaN(wardNumber) || wardNumber < 1) {
     return {
       valid: false,
       originalUrl: trimmed,
-      error: `Division number ${wardMatch[1]} is out of range. Valid divisions are 1 to 76.`,
+      error: `Invitation number ${wardMatch[1]} is invalid.`,
     };
   }
 
