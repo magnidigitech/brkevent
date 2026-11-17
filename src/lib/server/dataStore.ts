@@ -273,9 +273,12 @@ export async function recordArrival(
       if (error) throw error;
       const resp = data as RecordArrivalResponse;
       if (resp && resp.success) {
-        // Also keep in-memory cache synchronized
-        const targetWard = await getWardByNumber(ward_id);
-        if (targetWard) globalState.wards.set(targetWard.ward_number, targetWard);
+        // Also keep in-memory cache synchronized with confirmed ward number
+        const confirmedWardNum = resp.ward_number || (typeof ward_id === 'number' ? ward_id : 0);
+        if (confirmedWardNum > 0) {
+          const targetWard = await getWardByNumber(confirmedWardNum);
+          if (targetWard) globalState.wards.set(targetWard.ward_number, targetWard);
+        }
       }
       return resp;
     } catch (err) {
@@ -283,11 +286,23 @@ export async function recordArrival(
     }
   }
 
-  // Atomic In-Memory Implementation
+  // Atomic In-Memory Implementation Helper
+  const findWardInMem = (idOrNum: any): WardWithStats | undefined => {
+    if (typeof idOrNum === 'number' && globalState.wards.has(idOrNum)) {
+      return globalState.wards.get(idOrNum);
+    }
+    for (const w of globalState.wards.values()) {
+      if (String(w.id) === String(idOrNum) || String(w.ward_number) === String(idOrNum)) {
+        return w;
+      }
+    }
+    return undefined;
+  };
+
   // 1. Idempotency check: duplicate request_id
   const existingBatch = globalState.batches.find((b) => b.request_id === request_id);
   if (existingBatch) {
-    const ward = globalState.wards.get(ward_id);
+    const ward = findWardInMem(ward_id);
     return {
       success: true,
       duplicate_request: true,
@@ -299,15 +314,15 @@ export async function recordArrival(
     };
   }
 
-  const ward = globalState.wards.get(ward_id);
+  const ward = findWardInMem(ward_id);
   if (!ward) {
     return {
       success: false,
-      message: `Division with ID ${ward_id} not found.`,
+      message: `Division or Pass with ID ${ward_id} not found.`,
     };
   }
 
-  updateWardStatsInMemory(ward_id);
+  updateWardStatsInMemory(ward.ward_number);
   const currentEntered = ward.total_entered;
   const proposedTotal = currentEntered + batch_size;
 

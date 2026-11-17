@@ -31,29 +31,45 @@ export async function POST(request: NextRequest) {
     };
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const devRole = request.cookies.get('brk_dev_role')?.value;
+
     if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
       const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        return NextResponse.json({ success: false, message: 'Unauthorized. Please log in.' }, { status: 401 });
+      let user = null;
+      try {
+        const { data } = await supabase.auth.getUser();
+        user = data?.user || null;
+      } catch {
+        user = null;
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name, role')
-        .eq('id', user.id)
-        .single();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, role')
+          .eq('id', user.id)
+          .single();
 
-      staffUser = {
-        id: user.id,
-        name: profile?.full_name || user.email?.split('@')[0] || 'Staff Member',
-        email: user.email || '',
-      };
+        staffUser = {
+          id: user.id,
+          name: profile?.full_name || user.email?.split('@')[0] || 'Staff Member',
+          email: user.email || '',
+        };
+      } else if (devRole) {
+        // Authenticated via cookie/PIN/biometric session
+        const isAdmin = devRole === 'admin';
+        staffUser = {
+          id: isAdmin ? '873fb05b-2d11-429c-a500-fbc48ea5f918' : '68d8be10-4b2e-4070-95c9-2b51a20fe8e4',
+          name: isAdmin ? 'Event Administrator' : 'Gate Scanner 1',
+          email: isAdmin ? 'admin@bhashyamramakrishna.in' : 'scanner1@bhashyamramakrishna.in',
+        };
+      } else {
+        return NextResponse.json({ success: false, message: 'Unauthorized. Please log in.' }, { status: 401 });
+      }
     } else {
-      const devRole = request.cookies.get('brk_dev_role')?.value || 'scanner';
+      if (!devRole) {
+        return NextResponse.json({ success: false, message: 'Unauthorized. Please log in.' }, { status: 401 });
+      }
       staffUser = {
         id: devRole === 'admin' ? 'admin-user-1' : 'scanner-user-1',
         name: devRole === 'admin' ? 'Event Administrator' : 'Gate Scanner 1',

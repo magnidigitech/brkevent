@@ -87,6 +87,7 @@ export interface RecordArrivalResponse {
   success: boolean;
   batch_id?: string;
   ward_id?: number;
+  ward_number?: number;
   batch_size?: number;
   prior_entered?: number;
   cumulative_entered?: number;

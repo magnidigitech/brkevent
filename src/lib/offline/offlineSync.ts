@@ -156,9 +156,22 @@ function savePendingQueue(queue: PendingArrivalItem[]) {
  */
 export function recordArrivalOptimistic(
   payload: RecordArrivalPayload,
-  staffName: string = 'Staff'
+  staffName: string = 'Staff',
+  targetWardNumber?: number
 ): { ward: WardWithStats; response: RecordArrivalResponse } {
-  const currentWard = getCachedWard(payload.ward_id);
+  let resolvedWardNum = targetWardNumber;
+  if (!resolvedWardNum) {
+    if (typeof payload.ward_id === 'number' && memoryWardsMap.has(payload.ward_id)) {
+      resolvedWardNum = payload.ward_id;
+    } else {
+      const match = Array.from(memoryWardsMap.values()).find(
+        (w) => String(w.id) === String(payload.ward_id)
+      );
+      resolvedWardNum = match ? match.ward_number : (typeof payload.ward_id === 'number' ? payload.ward_id : 1);
+    }
+  }
+
+  const currentWard = getCachedWard(resolvedWardNum);
 
   const priorEntered = currentWard.total_entered;
   const newEntered = priorEntered + payload.batch_size;

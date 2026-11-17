@@ -163,7 +163,11 @@ export function WardEntryCard({
       };
 
       // 1. Optimistic Local Record: update screen immediately in 0ms!
-      const { ward: updatedWard, response: localResp } = recordArrivalOptimistic(payload);
+      const { ward: updatedWard, response: localResp } = recordArrivalOptimistic(
+        payload,
+        'Staff',
+        ward.ward_number
+      );
       setWard(updatedWard);
 
       // 2. Attempt server sync
@@ -178,22 +182,31 @@ export function WardEntryCard({
 
         if (res.ok && data.success) {
           setSuccessResponse(data);
+          const newEntered = data.cumulative_entered ?? updatedWard.total_entered;
+          setWard((prev) => {
+            if (!prev) return updatedWard;
+            return {
+              ...prev,
+              total_entered: newEntered,
+              remaining_allowance: Math.max(0, prev.allowance - newEntered),
+              excess_count: Math.max(0, newEntered - prev.allowance),
+            };
+          });
           flushPendingQueue().catch(() => {});
         } else if (data.concurrency_mismatch || data.excess_warning_needed) {
           setShowExcessWarning(true);
           setExcessWarningDetails({
             proposedTotal: data.cumulative_entered || (data.prior_entered || 0) + arrivingCount,
-            excessBy: data.excess_by || Math.max(0, (data.cumulative_entered || 0) - 5),
+            excessBy: data.excess_by || Math.max(0, (data.cumulative_entered || 0) - (ward?.allowance || 5)),
           });
           setSubmissionError(data.message || 'Attendance was updated. Please re-confirm.');
           await loadWardData();
           return;
         } else {
-          // Queued locally, will flush in background
-          setSuccessResponse({
-            ...localResp,
-            message: 'Recorded locally in offline queue. Auto-syncing with server...',
-          });
+          console.warn('Server record_arrival returned error:', data);
+          setSubmissionError(data.message || 'Error recording attendance on server.');
+          await loadWardData();
+          return;
         }
       } catch (networkErr) {
         // Network unavailable or slow - user gets immediate success!
@@ -209,7 +222,7 @@ export function WardEntryCard({
       if (typeof BroadcastChannel !== 'undefined') {
         try {
           const bc = new BroadcastChannel('brk_sync_channel');
-          bc.postMessage({ type: 'ARRIVAL_RECORDED', ward_id: ward.id });
+          bc.postMessage({ type: 'ARRIVAL_RECORDED', ward_id: ward.id, ward_number: ward.ward_number });
           bc.close();
         } catch {}
       }

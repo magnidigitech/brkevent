@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { Camera, CameraOff, AlertCircle, RefreshCw, Search, X, ChevronRight } from 'lucide-react';
+import { Camera, CameraOff, AlertCircle, RefreshCw, Search, X, ChevronRight, ArrowLeft, Users, Sparkles } from 'lucide-react';
 import { parseWardQRCode } from '@/lib/qr/parser';
 import { WARDS_SEED_DATA, WardSeed } from '@/data/wardsSeed';
 import { WardWithStats } from '@/types/database';
@@ -24,8 +24,11 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [scannedUrlError, setScannedUrlError] = useState<string | null>(null);
   const [manualSearchQuery, setManualSearchQuery] = useState<string>('');
+  const [isSearchFullscreen, setIsSearchFullscreen] = useState<boolean>(false);
+  const [searchCategory, setSearchCategory] = useState<'ALL' | 'CORPORATORS' | 'VIP' | 'TDP' | 'JSP' | 'BJP'>('ALL');
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
   const [wards, setWards] = useState<Array<WardWithStats | WardSeed>>(WARDS_SEED_DATA);
+  const fullscreenInputRef = useRef<HTMLInputElement>(null);
 
   // Sync latest live ward details (candidate names, updated phones)
   useEffect(() => {
@@ -234,16 +237,18 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
   }, [handleScanSuccess, isPaused]);
 
   // Synchronize scanner lifecycle with paused state and active toggle
+  // Manage camera lifecycle and auto-stop on pause or full-screen search
   useEffect(() => {
     isMountedRef.current = true;
+    const effectivelyPaused = isPaused || isSearchFullscreen;
 
-    if (isPaused) {
+    if (effectivelyPaused) {
       stopAllCameraStreams();
       stopScanner();
     } else if (scannerActive) {
       // Small timeout allows DOM to fully settle before requesting video stream
       const timer = setTimeout(() => {
-        if (isMountedRef.current && !isPaused) {
+        if (isMountedRef.current && !effectivelyPaused) {
           startScanner();
         }
       }, 100);
@@ -258,7 +263,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
       stopAllCameraStreams();
       stopScanner();
     };
-  }, [isPaused, scannerActive, startScanner, stopScanner]);
+  }, [isPaused, isSearchFullscreen, scannerActive, startScanner, stopScanner]);
 
   const toggleScanner = async () => {
     if (scannerActive) {
@@ -271,71 +276,91 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
 
   const handleManualSelect = (wardNumber: number) => {
     setScannedUrlError(null);
+    setIsSearchFullscreen(false);
     onWardScanned(wardNumber);
+  };
+
+  // Helper to filter by category
+  const passesCategory = (w: WardWithStats | WardSeed, cat: string) => {
+    if (cat === 'ALL') return true;
+    if (cat === 'CORPORATORS') return w.ward_number <= 76;
+    if (cat === 'VIP') return w.ward_number >= 101 || ['VIP', 'SPECIAL', 'GUEST', 'ALLIANCE'].includes(w.party);
+    if (cat === 'TDP') return w.party === 'TDP';
+    if (cat === 'JSP') return w.party === 'JSP';
+    if (cat === 'BJP') return w.party === 'BJP';
+    return true;
   };
 
   // Live AJAX search filtering for manual lookup with smart numeric prioritization
   const cleanQuery = manualSearchQuery.toLowerCase().trim();
   const searchResults = useMemo(() => {
-    if (!cleanQuery) return [];
-
     const isPureDigits = /^\d+$/.test(cleanQuery);
     const queryDigits = cleanQuery.replace(/\D/g, '');
     const digitCount = queryDigits.length;
-
-    // Rule: For 1 or 2 digits, search strictly by Division number (do NOT match random 2-digit pairs in phone numbers).
-    // If more than 2 digits (3+ digits, e.g. "98851", "4343"), check against phone numbers.
     const allowPhoneSearch = digitCount > 2;
 
-    // Check if query is like "division 45", "div 45", "d45", "w45", "ward 45" or pure digits like "1", "45"
-    const wardPrefixMatch = cleanQuery.match(/^(?:w|ward|d|div|division)[ -]?(\d{1,2})$/i);
+    const wardPrefixMatch = cleanQuery.match(/^(?:w|ward|d|div|division|pass|p|vip)[ -]?(\d{1,4})$/i);
     const targetWardNum = isPureDigits
       ? parseInt(cleanQuery, 10)
       : wardPrefixMatch
       ? parseInt(wardPrefixMatch[1], 10)
       : null;
 
-    const matches = wards.filter((w) => {
+    let baseList = wards;
+    if (searchCategory !== 'ALL') {
+      baseList = baseList.filter((w) => passesCategory(w, searchCategory));
+    }
+
+    if (!cleanQuery) {
+      return [...baseList].sort((a, b) => a.ward_number - b.ward_number);
+    }
+
+    const matches = baseList.filter((w) => {
       if (!w) return false;
 
-      // 1. Division / Ward Number Matches
+      // 1. Division / Pass Number Matches
       let matchDivision = false;
       if (targetWardNum !== null) {
-        // Single and double digit numbers match EXACT division only (e.g. "1" matches Division 1 only, never 10, 11, etc.)
         matchDivision = w.ward_number === targetWardNum;
-      } else if (!isPureDigits && cleanQuery.length > 2) {
+      } else if (!isPureDigits && cleanQuery.length >= 2) {
         matchDivision =
-          `division ${w.ward_number}` === cleanQuery ||
-          `ward ${w.ward_number}` === cleanQuery;
+          `division ${w.ward_number}`.includes(cleanQuery) ||
+          `ward ${w.ward_number}`.includes(cleanQuery) ||
+          `pass ${w.ward_number}`.includes(cleanQuery) ||
+          `pass #${w.ward_number}`.includes(cleanQuery);
       }
 
-      // 2. Candidate Name Matches (only when query is not pure digits)
+      // 2. Candidate / Guest Name Matches
       const matchName = !isPureDigits && w.candidate_name ? w.candidate_name.toLowerCase().includes(cleanQuery) : false;
 
-      // 3. Party Matches (only when query is not pure digits)
+      // 3. Party Matches
       const matchParty = !isPureDigits && w.party ? w.party.toLowerCase().includes(cleanQuery) : false;
 
-      // 4. Phone Number Matches (strictly allowed ONLY if more than 2 digits)
+      // 4. Phone Number Matches
       const cleanPhone = w.phone ? w.phone.replace(/\D/g, '') : '';
       const matchPhone = allowPhoneSearch && cleanPhone.includes(queryDigits);
 
       return matchDivision || matchName || matchParty || matchPhone;
     });
 
-    // Priority Ranking:
-    // Rank 1: Exact division number match ALWAYS first
-    // Rank 2: Ascending division order
-    return matches
-      .sort((a, b) => {
-        const aExact = targetWardNum !== null && a.ward_number === targetWardNum;
-        const bExact = targetWardNum !== null && b.ward_number === targetWardNum;
-        if (aExact && !bExact) return -1;
-        if (!aExact && bExact) return 1;
+    return matches.sort((a, b) => {
+      const aExact = targetWardNum !== null && a.ward_number === targetWardNum;
+      const bExact = targetWardNum !== null && b.ward_number === targetWardNum;
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
 
-        return a.ward_number - b.ward_number;
-      })
-      .slice(0, 10);
-  }, [cleanQuery, wards]);
+      return a.ward_number - b.ward_number;
+    });
+  }, [cleanQuery, wards, searchCategory]);
+
+  useEffect(() => {
+    if (isSearchFullscreen) {
+      const timer = setTimeout(() => {
+        fullscreenInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isSearchFullscreen]);
 
   return (
     <div className="w-full max-w-lg flex flex-col items-center gap-4">
@@ -452,80 +477,174 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         </div>
       </div>
 
-      {/* Simple AJAX Search Bar (Instant Live Typing) */}
+      {/* Simple AJAX Search Bar (Tap/Focus for Fullscreen Mobile Search) */}
       <div className="w-full bg-white rounded-3xl border border-black/[0.06] shadow-[0_2px_16px_rgba(0,0,0,0.03)] p-3 sm:p-4 transition-all">
-        {/* Simple Search Input Box */}
+        {/* Simple Search Input Box (Triggers Fullscreen on Focus) */}
         <div className="relative flex items-center">
           <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search division # (1–76), corporator, party..."
+            readOnly
+            onClick={() => setIsSearchFullscreen(true)}
+            onFocus={() => setIsSearchFullscreen(true)}
+            placeholder="Search division # (1–76), corporator, pass, or phone..."
             value={manualSearchQuery}
-            onChange={(e) => setManualSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-9 py-2.5 text-sm bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white text-neutral-900 placeholder:text-neutral-400 rounded-2xl border border-transparent focus:border-black/[0.1] focus:ring-2 focus:ring-neutral-900/10 focus:outline-none transition-all"
+            className="w-full pl-10 pr-9 py-2.5 text-sm bg-neutral-100 hover:bg-neutral-100/80 focus:bg-white text-neutral-900 placeholder:text-neutral-400 rounded-2xl border border-transparent focus:border-black/[0.1] focus:ring-2 focus:ring-neutral-900/10 focus:outline-none transition-all cursor-pointer"
           />
-          {manualSearchQuery && (
+          <button
+            type="button"
+            onClick={() => setIsSearchFullscreen(true)}
+            className="px-2.5 py-1 text-[11px] font-semibold bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded-lg absolute right-2.5 transition"
+          >
+            Search
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* FULL-SCREEN SEARCH MODAL ON FOCUS */}
+      {/* ========================================================================= */}
+      {isSearchFullscreen && (
+        <div className="fixed inset-0 z-[100] bg-[#fbfbfd] flex flex-col select-none animate-in fade-in duration-150">
+          {/* Top Sticky Search Bar */}
+          <div className="bg-white border-b border-black/[0.08] px-3.5 pt-3 pb-3 flex items-center gap-2.5 sticky top-0 z-10 shadow-2xs">
             <button
               type="button"
-              onClick={() => setManualSearchQuery('')}
-              className="w-5 h-5 rounded-full bg-neutral-200 hover:bg-neutral-300 text-neutral-600 flex items-center justify-center absolute right-3 transition"
-              title="Clear search"
+              onClick={() => {
+                setIsSearchFullscreen(false);
+              }}
+              className="w-10 h-10 rounded-full bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 flex items-center justify-center text-neutral-700 shrink-0 transition"
+              title="Close Search"
             >
-              <X className="w-3 h-3" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
-          )}
-        </div>
 
-        {/* Live AJAX Search Results List */}
-        {cleanQuery ? (
-          <div className="mt-3 flex flex-col gap-1.5 max-h-72 overflow-y-auto">
+            <div className="relative flex-1 flex items-center">
+              <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 pointer-events-none" />
+              <input
+                ref={fullscreenInputRef}
+                type="text"
+                autoFocus
+                placeholder="Type division #, name, pass #, or phone..."
+                value={manualSearchQuery}
+                onChange={(e) => setManualSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-9 py-2.5 text-sm sm:text-base bg-neutral-100 focus:bg-white text-neutral-900 placeholder:text-neutral-400 rounded-2xl border border-transparent focus:border-black/[0.1] focus:ring-2 focus:ring-neutral-900/10 focus:outline-none transition-all"
+              />
+              {manualSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setManualSearchQuery('')}
+                  className="w-6 h-6 rounded-full bg-neutral-200 hover:bg-neutral-300 text-neutral-600 flex items-center justify-center absolute right-2.5 transition"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsSearchFullscreen(false);
+              }}
+              className="text-xs sm:text-sm font-semibold text-neutral-600 hover:text-neutral-900 px-2 py-1 shrink-0"
+            >
+              Cancel
+            </button>
+          </div>
+
+          {/* Category Filter Chips */}
+          <div className="bg-white/90 backdrop-blur-md border-b border-black/[0.04] px-4 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+            {[
+              { id: 'ALL', label: 'All Invitees' },
+              { id: 'CORPORATORS', label: 'Corporators (1–76)' },
+              { id: 'VIP', label: 'Special Passes' },
+              { id: 'TDP', label: 'TDP' },
+              { id: 'JSP', label: 'JSP' },
+              { id: 'BJP', label: 'BJP' },
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSearchCategory(cat.id as any)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold shrink-0 transition-all ${
+                  searchCategory === cat.id
+                    ? 'bg-neutral-900 text-white shadow-xs'
+                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Results Header Counter */}
+          <div className="px-4 pt-3 pb-1 flex items-center justify-between text-xs font-medium text-neutral-500 shrink-0">
+            <span>
+              {cleanQuery ? `Results for "${manualSearchQuery}"` : searchCategory === 'VIP' ? 'Special & VIP Passes' : searchCategory === 'CORPORATORS' ? 'Divisions 1–76' : 'All Guest Invitees'}
+            </span>
+            <span className="text-[11px] bg-neutral-200/80 text-neutral-700 px-2 py-0.5 rounded-full font-semibold">
+              {searchResults.length} {searchResults.length === 1 ? 'match' : 'matches'}
+            </span>
+          </div>
+
+          {/* Large Scrollable Result Cards List */}
+          <div className="flex-1 overflow-y-auto px-4 py-2 pb-28 space-y-2.5">
             {searchResults.length > 0 ? (
-              <>
-                <div className="px-1 py-1 flex items-center justify-between text-[11px] font-medium text-neutral-400">
-                  <span>Matching Divisions</span>
-                  <span>
-                    {searchResults.length} {searchResults.length === 1 ? 'match' : 'matches'}
-                  </span>
-                </div>
-                {searchResults.map((w) => (
+              searchResults.map((w) => {
+                const isVip = w.ward_number >= 101 || ['VIP', 'SPECIAL', 'GUEST', 'ALLIANCE'].includes(w.party);
+                return (
                   <div
                     key={w.ward_number}
                     onClick={() => {
                       setManualSearchQuery('');
                       handleManualSelect(w.ward_number);
                     }}
-                    className="p-3 bg-neutral-50/70 hover:bg-neutral-100 active:bg-neutral-200/70 border border-black/[0.04] rounded-2xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group"
+                    className="p-3.5 bg-white hover:bg-neutral-50 active:bg-neutral-100 border border-black/[0.06] rounded-2xl flex items-center justify-between cursor-pointer transition-all shadow-2xs active:scale-[0.99] group"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="w-9 h-9 rounded-xl bg-neutral-900 text-white font-semibold text-xs sm:text-sm flex items-center justify-center shrink-0">
-                        {w.ward_number}
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <span className={`w-11 h-11 rounded-2xl font-bold text-xs sm:text-sm flex flex-col items-center justify-center shrink-0 shadow-2xs ${
+                        isVip ? 'bg-purple-700 text-white' : 'bg-neutral-900 text-white'
+                      }`}>
+                        <span className="text-[9px] uppercase tracking-tighter opacity-80 leading-none">{isVip ? 'Pass' : 'Div'}</span>
+                        <span className="leading-tight">{w.ward_number}</span>
                       </span>
+
                       <div className="flex flex-col min-w-0">
-                        <span className="text-xs sm:text-sm font-semibold text-neutral-900 truncate group-hover:text-black">
+                        <span className="text-sm sm:text-base font-bold text-neutral-900 truncate group-hover:text-black">
                           {w.candidate_name}
                         </span>
-                        <span className="text-[11px] text-neutral-500 truncate mt-0.5">
-                          Division {w.ward_number} • {w.phone || 'No phone'}
-                        </span>
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500 truncate">
+                          <span>{isVip ? `Pass #${w.ward_number}` : `Division ${w.ward_number}`}</span>
+                          {w.phone && (
+                            <>
+                              <span>•</span>
+                              <span className="font-mono">{w.phone}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       <PartyBadge party={w.party} size="sm" />
-                      <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-900 group-hover:translate-x-0.5 transition-all" />
+                      <ChevronRight className="w-5 h-5 text-neutral-400 group-hover:text-neutral-900 group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </div>
-                ))}
-              </>
+                );
+              })
             ) : (
-              <div className="py-6 text-center text-neutral-400">
-                <p className="text-xs font-medium text-neutral-700">No divisions match &ldquo;{manualSearchQuery}&rdquo;</p>
-                <p className="text-[11px] text-neutral-400 mt-1">Try division number (1–76), corporator name, or party</p>
+              <div className="py-12 text-center text-neutral-400 flex flex-col items-center">
+                <Search className="w-10 h-10 text-neutral-300 mb-2 stroke-[1.5]" />
+                <p className="text-sm font-semibold text-neutral-700">No invitees found</p>
+                <p className="text-xs text-neutral-400 mt-1 max-w-xs">
+                  Try searching by division # (1–76), pass # (101+), candidate name, or phone number.
+                </p>
               </div>
             )}
           </div>
-        ) : null}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
