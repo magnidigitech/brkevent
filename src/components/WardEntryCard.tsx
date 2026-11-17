@@ -128,6 +128,13 @@ export function WardEntryCard({
     setArrivingCount(1);
   }, [wardNumber, initialWardData]);
 
+  // Auto scroll to top smoothly whenever attendance is successfully recorded
+  useEffect(() => {
+    if (successResponse && typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [successResponse]);
+
   // Handle Arrival Submission with Instant Optimistic UI + Offline Queue
   const handleRecordArrival = async (acknowledgeExcess: boolean = false) => {
     if (!ward) return;
@@ -192,20 +199,42 @@ export function WardEntryCard({
               excess_count: Math.max(0, newEntered - prev.allowance),
             };
           });
+          setShowExcessWarning(false);
+          setSubmitting(false);
+
+          // Instant smooth scroll to top so staff immediately sees green confirmation
+          if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+
+          // Background fire-and-forget sync
           flushPendingQueue().catch(() => {});
+          loadWardData().catch(() => {});
+          currentRequestIdRef.current = crypto.randomUUID();
+
+          if (typeof BroadcastChannel !== 'undefined') {
+            try {
+              const bc = new BroadcastChannel('brk_sync_channel');
+              bc.postMessage({ type: 'ARRIVAL_RECORDED', ward_id: ward.id, ward_number: ward.ward_number });
+              bc.close();
+            } catch {}
+          }
+          return;
         } else if (data.concurrency_mismatch || data.excess_warning_needed) {
+          setSubmitting(false);
           setShowExcessWarning(true);
           setExcessWarningDetails({
             proposedTotal: data.cumulative_entered || (data.prior_entered || 0) + arrivingCount,
             excessBy: data.excess_by || Math.max(0, (data.cumulative_entered || 0) - (ward?.allowance || 5)),
           });
           setSubmissionError(data.message || 'Attendance was updated. Please re-confirm.');
-          await loadWardData();
+          loadWardData().catch(() => {});
           return;
         } else {
+          setSubmitting(false);
           console.warn('Server record_arrival returned error:', data);
           setSubmissionError(data.message || 'Error recording attendance on server.');
-          await loadWardData();
+          loadWardData().catch(() => {});
           return;
         }
       } catch (networkErr) {
@@ -215,26 +244,17 @@ export function WardEntryCard({
           ...localResp,
           message: 'Saved locally in Offline Mode. Will auto-sync when connection restores.',
         });
+        setShowExcessWarning(false);
+        setSubmitting(false);
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        currentRequestIdRef.current = crypto.randomUUID();
+        return;
       }
-
-      setShowExcessWarning(false);
-      // Broadcast instant sync to all local tabs/windows
-      if (typeof BroadcastChannel !== 'undefined') {
-        try {
-          const bc = new BroadcastChannel('brk_sync_channel');
-          bc.postMessage({ type: 'ARRIVAL_RECORDED', ward_id: ward.id, ward_number: ward.ward_number });
-          bc.close();
-        } catch {}
-      }
-      // Reload updated ward state
-      await loadWardData();
-      // Prepare new request ID for any next submission
-      currentRequestIdRef.current = crypto.randomUUID();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Network error. Attendance was NOT recorded.';
       setSubmissionError(msg);
-      // Notice: Do NOT change currentRequestIdRef so retry sends same ID for idempotency!
-    } finally {
       setSubmitting(false);
     }
   };
@@ -592,8 +612,8 @@ export function WardEntryCard({
             Positive whole number only. Scanning alone does not mark arrivals.
           </p>
 
-          <div className="flex items-center gap-3">
-            <div className="relative w-28">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+            <div className="relative w-full sm:w-28 shrink-0">
               <input
                 id="arrivingInput"
                 type="number"
@@ -611,7 +631,7 @@ export function WardEntryCard({
             </div>
 
             {/* Quick Increment Buttons (Apple Segmented Style) */}
-            <div className="flex gap-1.5">
+            <div className="grid grid-cols-5 gap-1.5 flex-1">
               {[1, 2, 3, 4, 5].map((num) => (
                 <button
                   key={num}
@@ -621,7 +641,7 @@ export function WardEntryCard({
                     setShowExcessWarning(false);
                     setSubmissionError(null);
                   }}
-                  className={`px-3 py-2 text-xs font-medium rounded-xl border transition-all active:scale-[0.98] ${
+                  className={`py-2.5 text-xs font-semibold rounded-xl border transition-all active:scale-[0.98] text-center ${
                     arrivingCount === num
                       ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
                       : 'bg-neutral-100 text-neutral-700 border-neutral-200/70 hover:bg-neutral-200/70'
@@ -646,12 +666,12 @@ export function WardEntryCard({
             <button
               onClick={() => handleRecordArrival(false)}
               disabled={submitting}
-              className="mt-5 w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-sm sm:text-base rounded-xl shadow-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.99]"
+              className="mt-5 w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-sm sm:text-base rounded-xl shadow-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
             >
               {submitting ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-neutral-300" />
-                  <span>Confirming Database Write...</span>
+                  <span>Recording Arrival...</span>
                 </>
               ) : (
                 <>
@@ -659,6 +679,20 @@ export function WardEntryCard({
                   <span>Record {arrivingCount} {arrivingCount === 1 ? 'Arrival' : 'Arrivals'}</span>
                 </>
               )}
+            </button>
+          )}
+
+          {/* Secondary Scan Next Invitation Button if recorded */}
+          {successResponse && !showExcessWarning && (
+            <button
+              onClick={() => {
+                setSuccessResponse(null);
+                onScanNext();
+              }}
+              className="mt-3 w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
+            >
+              <QrCode className="w-4 h-4" />
+              <span>Scan Next Invitation</span>
             </button>
           )}
 

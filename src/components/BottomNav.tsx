@@ -53,23 +53,23 @@ export function BottomNav() {
           <button
             type="button"
             onClick={() => {
-              if (pathname?.startsWith('/scanner')) {
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new CustomEvent('reset-scanner-view'));
-                }
-              } else {
-                router.push('/scanner');
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('reset-scanner-view'));
+                window.scrollTo({ top: 0, behavior: 'instant' });
               }
+              router.push('/scanner');
             }}
-            className="w-14 h-14 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white flex flex-col items-center justify-center shadow-[0_8px_20px_rgba(0,0,0,0.25)] border-2 border-white active:scale-95 transition-all group cursor-pointer"
+            className="flex flex-col items-center justify-center active:scale-95 transition-transform group cursor-pointer"
             title="Scan Invitation QR"
             aria-label="Scan Invitation QR"
           >
-            <QrCode className="w-6 h-6 text-white group-hover:scale-105 transition-transform" />
+            <div className="w-14 h-14 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white flex flex-col items-center justify-center shadow-[0_8px_20px_rgba(0,0,0,0.25)] border-2 border-white group-hover:scale-105 transition-all">
+              <QrCode className="w-6 h-6 text-white" />
+            </div>
+            <span className={`text-[10px] font-semibold mt-1 tracking-tight ${isScanner ? 'text-neutral-900' : 'text-neutral-500'}`}>
+              Scanner
+            </span>
           </button>
-          <span className={`text-[10px] font-semibold mt-1 tracking-tight ${isScanner ? 'text-neutral-900' : 'text-neutral-500'}`}>
-            Scanner
-          </span>
         </div>
 
         {/* Dashboard Options / Actions Tab */}

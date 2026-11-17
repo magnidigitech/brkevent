@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { QRScanner } from '@/components/QRScanner';
 import { WardEntryCard } from '@/components/WardEntryCard';
 import { AdminWardEditModal } from '@/components/AdminWardEditModal';
 import { WardWithStats, UserProfile } from '@/types/database';
-import { RefreshCw, Lock, Wifi, WifiOff, CloudUpload, CheckCircle2, LogOut } from 'lucide-react';
+import { RefreshCw, Lock, Wifi, WifiOff, CloudUpload, LogOut } from 'lucide-react';
 import {
   initOfflineStorage,
   flushPendingQueue,
@@ -18,9 +18,15 @@ import { cacheCandidatePhotosInLocalStorage } from '@/lib/candidatePhotos';
 import { cacheAllInvitationsLocally } from '@/lib/offline/invitationCache';
 import { stopAllCameraStreams } from '@/lib/camera/cameraManager';
 
-export default function ScannerPage() {
+function ScannerContent() {
   const router = useRouter();
-  const [selectedWardNumber, setSelectedWardNumber] = useState<number | null>(null);
+  const searchParams = useSearchParams();
+
+  // Derive selected ward number directly from URL search params (Single Source of Truth)
+  const divParam = searchParams.get('division');
+  const parsedWard = divParam ? parseInt(divParam, 10) : null;
+  const selectedWardNumber = parsedWard && !isNaN(parsedWard) && parsedWard >= 1 ? parsedWard : null;
+
   const selectedWardRef = useRef<number | null>(null);
   selectedWardRef.current = selectedWardNumber;
 
@@ -34,7 +40,7 @@ export default function ScannerPage() {
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [pendingCount, setPendingCount] = useState<number>(0);
 
-  // Initialize history guard so back button never exits unexpectedly
+  // Initialize history guard so physical back button on scanner root can be intercepted cleanly
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -48,7 +54,7 @@ export default function ScannerPage() {
     };
   }, []);
 
-  // When a ward is scanned or open, force stop camera
+  // When a ward is scanned or open, force stop camera stream immediately
   useEffect(() => {
     if (selectedWardNumber !== null) {
       stopAllCameraStreams();
@@ -57,18 +63,14 @@ export default function ScannerPage() {
 
   // Initialize offline storage & automatic background sync loop
   useEffect(() => {
-    // 1. Immediately initialize offline storage so all divisions are cached
     initOfflineStorage();
-    // Pre-cache all candidate photos directly into localStorage for 0ms offline access
     cacheCandidatePhotosInLocalStorage();
-    // Pre-cache all 45MB final invitation cards into CacheStorage for instant offline sharing
     cacheAllInvitationsLocally();
     setPendingCount(getPendingQueue().length);
     if (typeof navigator !== 'undefined') {
       setIsOnline(navigator.onLine);
     }
 
-    // 2. Network listener for online/offline events
     const handleNetworkChange = () => {
       const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
       setIsOnline(online);
@@ -82,7 +84,6 @@ export default function ScannerPage() {
     window.addEventListener('online', handleNetworkChange);
     window.addEventListener('offline', handleNetworkChange);
 
-    // 3. Periodic background sync (every 6 seconds)
     const interval = setInterval(() => {
       setPendingCount(getPendingQueue().length);
       if (typeof navigator !== 'undefined' && navigator.onLine) {
@@ -92,7 +93,6 @@ export default function ScannerPage() {
       }
     }, 6000);
 
-    // 4. Initial background sync of all 76 divisions from server
     fetch('/api/wards')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -127,31 +127,35 @@ export default function ScannerPage() {
       });
   }, []);
 
-  const handleWardScanned = useCallback((wardNumber: number) => {
-    setSelectedWardNumber(wardNumber);
-    if (typeof window !== 'undefined') {
-      window.history.pushState({ wardNumber, view: 'result' }, '', `/scanner?division=${wardNumber}`);
-    }
-  }, []);
+  // Navigation handlers
+  const handleWardScanned = useCallback(
+    (wardNumber: number) => {
+      router.push(`/scanner?division=${wardNumber}`);
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+    },
+    [router]
+  );
 
   const handleScanNext = useCallback(() => {
-    setSelectedWardNumber(null);
+    router.replace('/scanner');
     if (typeof window !== 'undefined') {
-      window.history.replaceState({ scannerActive: true }, '', '/scanner');
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
-  }, []);
+  }, [router]);
 
-  // Listen for reset events from BottomNav or elsewhere
+  // Listen for reset events from BottomNav, Header, or anywhere in the app
   useEffect(() => {
     const handleReset = () => {
-      setSelectedWardNumber(null);
+      router.replace('/scanner');
       if (typeof window !== 'undefined') {
-        window.history.replaceState({ scannerActive: true }, '', '/scanner');
+        window.scrollTo({ top: 0, behavior: 'instant' });
       }
     };
     window.addEventListener('reset-scanner-view', handleReset);
     return () => window.removeEventListener('reset-scanner-view', handleReset);
-  }, []);
+  }, [router]);
 
   const handleConfirmExit = () => {
     setShowExitConfirm(false);
@@ -159,7 +163,6 @@ export default function ScannerPage() {
       try {
         window.close();
       } catch {}
-      // Fallback if browser blocks window.close(): navigate back out of history
       setTimeout(() => {
         try {
           window.history.go(-10);
@@ -178,29 +181,24 @@ export default function ScannerPage() {
         return;
       }
 
+      // Check current URL after pop
       const params = new URLSearchParams(window.location.search);
-      const divParam = params.get('division');
+      const divParamAfterPop = params.get('division');
 
-      // 2. Case A: User is viewing a scan result (selectedWardRef.current !== null)
+      // 2. If user was on a ward card, popping history returns to scanner cleanly:
+      // NEVER trigger exit confirmation dialog!
       if (selectedWardRef.current !== null) {
-        if (!divParam) {
-          // Hardware back button pressed on scan result -> return cleanly to scanner camera!
-          setSelectedWardNumber(null);
-          // Maintain active guard state for subsequent back presses
-          window.history.replaceState({ scannerActive: true }, '', '/scanner');
-          return;
-        } else {
-          const num = parseInt(divParam, 10);
-          if (num >= 1) {
-            setSelectedWardNumber(num);
-            return;
-          }
-        }
+        setShowExitConfirm(false);
+        return;
       }
 
-      // 3. Case B: User is on the scanner camera (selectedWardRef.current === null)
-      // Hardware back button was pressed on the scanner camera!
-      // If the exit confirmation is already showing, dismiss it
+      // If user is currently on a division card, dismiss any exit prompt
+      if (divParamAfterPop) {
+        setShowExitConfirm(false);
+        return;
+      }
+
+      // 3. User was ALREADY on the scanner camera and pressed the physical back button:
       if (showExitConfirmRef.current) {
         setShowExitConfirm(false);
         return;
@@ -208,7 +206,6 @@ export default function ScannerPage() {
 
       // Show confirmation dialog: "Would you like to close the application?"
       setShowExitConfirm(true);
-      // Re-push active state so history is preserved in the app
       window.history.pushState({ scannerActive: true }, '', '/scanner');
     };
 
@@ -227,20 +224,6 @@ export default function ScannerPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showExitConfirm]);
-
-  // Check initial URL params for division deep link
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const divParam = params.get('division');
-      if (divParam) {
-        const num = parseInt(divParam, 10);
-        if (num >= 1 && num <= 76) {
-          setSelectedWardNumber(num);
-        }
-      }
-    }
-  }, []);
 
   const handleOpenEdit = async () => {
     if (!selectedWardNumber) return;
@@ -327,11 +310,11 @@ export default function ScannerPage() {
           Gate Attendance Scanner
         </h1>
         <p className="text-xs sm:text-sm text-neutral-500 mt-1 font-normal">
-          Scan printed division invitations (Divisions 1–76). 5 people allowance per division.
+          Scan printed division invitations (Divisions 1–76) & VIP passes. 5 people allowance.
         </p>
       </div>
 
-      {/* Conditionally show Ward Entry Card or Camera Scanner */}
+      {/* Conditionally show Ward Entry Card or Camera Scanner based on URL search param */}
       {selectedWardNumber ? (
         <WardEntryCard
           wardNumber={selectedWardNumber}
@@ -352,49 +335,38 @@ export default function ScannerPage() {
           ward={editingWard}
           onClose={() => setEditingWard(null)}
           onSaved={() => {
-            // Trigger refresh
             setEditingWard(null);
           }}
         />
       )}
 
-      {/* ========================================================================= */}
-      {/* EXIT APPLICATION CONFIRMATION MODAL */}
-      {/* ========================================================================= */}
+      {/* Hardware / Browser Back Button Exit Confirmation Modal */}
       {showExitConfirm && (
-        <div
-          className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150"
-          onClick={() => setShowExitConfirm(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-[28px] max-w-sm w-full p-6 shadow-2xl border border-neutral-200/80 flex flex-col items-center text-center animate-in zoom-in-95 duration-150"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-neutral-100 border border-neutral-200 flex items-center justify-center mb-4 text-neutral-800 shadow-xs">
-              <LogOut className="w-7 h-7 text-neutral-700 stroke-[1.8]" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-xs bg-white rounded-3xl p-6 shadow-2xl border border-black/[0.08] flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center mb-3 text-neutral-700">
+              <LogOut className="w-6 h-6" />
             </div>
 
-            <h3 className="text-lg font-bold text-neutral-900 tracking-tight">
+            <h3 className="text-base font-semibold text-neutral-900">
               Exit Application?
             </h3>
-
-            <p className="text-xs sm:text-sm text-neutral-500 mt-1.5 leading-relaxed max-w-xs">
+            <p className="text-xs text-neutral-500 mt-1 mb-5">
               Would you like to close the application?
             </p>
 
-            <div className="mt-6 flex items-center gap-3 w-full">
+            <div className="flex items-center gap-2 w-full">
               <button
                 type="button"
                 onClick={() => setShowExitConfirm(false)}
-                className="flex-1 py-3 px-4 rounded-xl bg-neutral-100 hover:bg-neutral-200 active:scale-95 text-neutral-800 text-sm font-semibold transition-all"
+                className="flex-1 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-xl text-xs font-semibold transition active:scale-95"
               >
                 No, Stay
               </button>
-
               <button
                 type="button"
                 onClick={handleConfirmExit}
-                className="flex-1 py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-sm font-semibold transition-all shadow-xs"
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
               >
                 Yes, Close
               </button>
@@ -406,3 +378,21 @@ export default function ScannerPage() {
   );
 }
 
+export default function ScannerPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-[50vh]">
+          <div className="w-12 h-12 rounded-2xl bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-black/[0.06] flex items-center justify-center mb-3">
+            <RefreshCw className="w-5 h-5 text-neutral-800 animate-spin" />
+          </div>
+          <span className="text-xs font-medium text-neutral-500 tracking-tight">
+            Loading Gate Attendance Scanner...
+          </span>
+        </div>
+      }
+    >
+      <ScannerContent />
+    </Suspense>
+  );
+}

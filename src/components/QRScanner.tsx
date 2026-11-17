@@ -55,6 +55,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
   const isTransitioningRef = useRef<boolean>(false);
   const isStartingRef = useRef<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
+  const hasAutoRetriedRef = useRef<boolean>(false);
   const onWardScannedRef = useRef(onWardScanned);
   onWardScannedRef.current = onWardScanned;
   const isPausedRef = useRef(isPaused);
@@ -65,29 +66,27 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
 
   // Stop scanner safely and release hardware
   const stopScanner = useCallback(async () => {
-    if (!scannerRef.current) {
-      stopAllCameraStreams();
-      isTransitioningRef.current = false;
-      return;
-    }
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
 
-    try {
-      const scanner = scannerRef.current;
-      if (scanner.isScanning) {
-        await scanner.stop();
+    if (scanner) {
+      try {
+        if (scanner.isScanning) {
+          await scanner.stop();
+        }
+      } catch (err) {
+        // ignore
       }
       try {
         await scanner.clear();
-      } catch {}
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!msg.includes('already under transition') && !msg.includes('not running') && !msg.includes('media was removed')) {
-        console.warn('Handled stopScanner warning:', err);
+      } catch (err) {
+        // ignore
       }
-    } finally {
-      stopAllCameraStreams();
-      isTransitioningRef.current = false;
     }
+
+    stopAllCameraStreams();
+    isTransitioningRef.current = false;
+    isStartingRef.current = false;
   }, []);
 
   const handleScanSuccess = useCallback(async (decodedText: string) => {
@@ -132,12 +131,15 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     }
   }, []);
 
+  const handleScanSuccessRef = useRef(handleScanSuccess);
+  handleScanSuccessRef.current = handleScanSuccess;
+
   // Start scanner safely with transition protection and concurrency lock
   const startScanner = useCallback(async () => {
     if (!isMountedRef.current || isPausedRef.current || isSearchFullscreenRef.current) return;
     if (isStartingRef.current) return;
 
-    // If scanner is already scanning, we are good!
+    // If scanner is already scanning, maintain active
     if (scannerRef.current?.isScanning) {
       setScannerActive(true);
       return;
@@ -162,14 +164,20 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         return;
       }
 
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode(qrRegionId);
+      // Clean up previous instance and container DOM before creating new instance
+      if (scannerRef.current) {
+        try {
+          if (scannerRef.current.isScanning) {
+            await scannerRef.current.stop();
+          }
+          await scannerRef.current.clear();
+        } catch {}
+        scannerRef.current = null;
       }
+      containerEl.innerHTML = '';
 
-      if (scannerRef.current.isScanning) {
-        setScannerActive(true);
-        return;
-      }
+      const html5Qr = new Html5Qrcode(qrRegionId);
+      scannerRef.current = html5Qr;
 
       const config = {
         fps: 15,
@@ -177,12 +185,12 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         aspectRatio: 1.0,
       };
 
-      // Start camera with rear camera preference
-      await scannerRef.current.start(
-        { facingMode: 'environment' },
+      // Start camera with rear camera preference (ideal: environment)
+      await html5Qr.start(
+        { facingMode: { ideal: 'environment' } },
         config,
         (decodedText: string) => {
-          handleScanSuccess(decodedText);
+          handleScanSuccessRef.current(decodedText);
         },
         () => {
           // Ignore periodic frame scan misses
@@ -202,6 +210,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
 
       setScannerActive(true);
       setCameraError(null);
+      hasAutoRetriedRef.current = false;
     } catch (err: unknown) {
       const errObj = err instanceof Error ? err : new Error(String(err));
       const msg = errObj.message || '';
@@ -212,6 +221,23 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         msg.includes('media was removed') ||
         msg.includes('already under transition')
       ) {
+        return;
+      }
+
+      // If camera hardware was temporarily locked or releasing from prior view, retry once automatically after 300ms
+      if (
+        (errObj.name === 'NotReadableError' || msg.includes('video source') || msg.includes('Device in use')) &&
+        !hasAutoRetriedRef.current &&
+        isMountedRef.current &&
+        !isPausedRef.current
+      ) {
+        hasAutoRetriedRef.current = true;
+        console.info('Camera busy, automatically retrying in 300ms...');
+        setTimeout(() => {
+          if (isMountedRef.current && !isPausedRef.current) {
+            startScanner();
+          }
+        }, 300);
         return;
       }
 
@@ -234,7 +260,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         setIsInitializing(false);
       }
     }
-  }, [handleScanSuccess]);
+  }, []);
 
   // Manage camera lifecycle and auto-stop on pause or full-screen search
   useEffect(() => {

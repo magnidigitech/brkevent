@@ -76,7 +76,16 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo / Event Title */}
           <div className="flex items-center gap-3">
-            <Link href="/scanner" className="flex items-center gap-3 group">
+            <Link
+              href="/scanner"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('reset-scanner-view'));
+                  window.scrollTo({ top: 0, behavior: 'instant' });
+                }
+              }}
+              className="flex items-center gap-3 group"
+            >
               <div className="w-9 h-9 rounded-xl overflow-hidden bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)] flex items-center justify-center p-0.5 border border-black/[0.06] shrink-0 group-hover:scale-105 transition-transform">
                 <img
                   src="/images/kutami-logo.jpg"
@@ -114,6 +123,12 @@ export function Header() {
             <div className="hidden sm:flex items-center gap-1.5">
               <Link
                 href="/scanner"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('reset-scanner-view'));
+                    window.scrollTo({ top: 0, behavior: 'instant' });
+                  }
+                }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-[0.98] ${
                   pathname?.startsWith('/scanner') || pathname?.startsWith('/ward')
                     ? 'bg-neutral-900 text-white shadow-xs'
