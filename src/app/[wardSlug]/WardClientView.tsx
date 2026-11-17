@@ -25,7 +25,7 @@ export function WardClientView({
   const seedWard = WARDS_SEED_DATA.find((w) => w.ward_number === wardNumber);
   const isVipInitial = wardNumber >= 101;
   const [candidateName, setCandidateName] = useState<string>(
-    seedWard?.candidate_name || (isVipInitial ? `VIP Pass #${wardNumber}` : `Division ${wardNumber}`)
+    seedWard?.candidate_name || (isVipInitial ? `Pass #${wardNumber}` : `Division ${wardNumber}`)
   );
   const [party, setParty] = useState<PartyAffiliation>(seedWard?.party || (isVipInitial ? 'VIP' : 'TDP'));
   const [allowance, setAllowance] = useState<number>(seedWard?.allowance || 5);
@@ -159,7 +159,7 @@ export function WardClientView({
             }`}>
               {isVip ? `Pass #${wardNumber}` : `Division ${wardNumber}`}
             </span>
-            <PartyBadge party={party} size="sm" />
+            {!isVip && <PartyBadge party={party} size="sm" />}
           </div>
 
           <h3 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight leading-snug">
@@ -227,7 +227,7 @@ export function WardClientView({
                   {candidateName}
                 </span>
                 <span className="text-[11px] text-neutral-500 font-medium">
-                  {isVip ? `Pass #${wardNumber}` : `Division ${wardNumber}`} ({party})
+                  {isVip ? `Pass #${wardNumber}` : `Division ${wardNumber} (${party})`}
                 </span>
               </div>
             </div>
@@ -260,8 +260,10 @@ export function WardClientView({
               <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
                 {candidateName}
               </h2>
-              <span className="inline-block mt-1 px-3.5 py-1 rounded-full text-xs font-semibold bg-neutral-900 text-white">
-                Division {wardNumber} • Admit 5
+              <span className={`inline-block mt-1 px-3.5 py-1 rounded-full text-xs font-semibold ${
+                isVip ? 'bg-purple-700 text-white' : 'bg-neutral-900 text-white'
+              }`}>
+                {isVip ? `Pass #${wardNumber}` : `Division ${wardNumber}`} • Admit {allowance}
               </span>
             </div>
           </div>

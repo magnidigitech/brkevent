@@ -88,9 +88,9 @@ export function formatWhatsAppMessage(
   let msg = template;
 
   if (isVip) {
-    // Adapt template for VIP: replace "Division:" with "Pass:"
-    msg = msg.replace(/• \*Division:\* Division \{division\} \(\{party\}\)/gi, `• *Pass:* VIP Pass #${ward.ward_number} ({party})`);
-    msg = msg.replace(/• \*Division:\* Division \{division\}/gi, `• *Pass:* VIP Pass #${ward.ward_number}`);
+    // Adapt template for VIP: replace "Division:" with "Pass:" and remove party/vip text
+    msg = msg.replace(/• \*Division:\* Division \{division\} \(\{party\}\)/gi, `• *Pass:* Pass #${ward.ward_number}`);
+    msg = msg.replace(/• \*Division:\* Division \{division\}/gi, `• *Pass:* Pass #${ward.ward_number}`);
   }
 
   // Replace placeholders: support both {var} and {{var}} for division and legacy ward
@@ -101,7 +101,7 @@ export function formatWhatsAppMessage(
     division_number: String(ward.ward_number),
     ward: isVip ? `Pass #${ward.ward_number}` : String(ward.ward_number),
     ward_number: String(ward.ward_number),
-    party: isVip && ward.party === 'VIP' ? 'VIP Invitee' : isVip && ward.party === 'SPECIAL' ? 'Special Guest' : ward.party,
+    party: isVip && ward.party === 'VIP' ? '' : isVip && ward.party === 'SPECIAL' ? 'Special Guest' : ward.party,
     allowance: String(allowance),
     url: url,
     entered: String(entered),

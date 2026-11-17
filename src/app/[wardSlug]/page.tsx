@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const seedWard = WARDS_SEED_DATA.find((w) => w.ward_number === wardNumber);
   const winningCorp = WINNING_CORPORATORS.find((w) => w.ward === wardNumber);
 
-  let candidateName = winningCorp ? winningCorp.nameEn : (seedWard?.candidate_name || (isVip ? `VIP Pass #${wardNumber}` : `Division ${wardNumber}`));
+  let candidateName = winningCorp ? winningCorp.nameEn : (seedWard?.candidate_name || (isVip ? `Pass #${wardNumber}` : `Division ${wardNumber}`));
   if (isVip && !seedWard) {
     try {
       const dbWard = await getWardByNumber(wardNumber);
