@@ -185,17 +185,50 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         aspectRatio: 1.0,
       };
 
-      // Start camera with rear camera preference (ideal: environment)
-      await html5Qr.start(
-        { facingMode: { ideal: 'environment' } },
-        config,
-        (decodedText: string) => {
-          handleScanSuccessRef.current(decodedText);
-        },
-        () => {
-          // Ignore periodic frame scan misses
+      // Select camera device intelligently:
+      // On mobile devices, prefer the rear/back camera.
+      // On desktops/laptops with only a front webcam (e.g. MacBook), select that camera cleanly.
+      let cameraParam: any = { facingMode: 'environment' };
+
+      try {
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras && cameras.length > 0) {
+          const backCam = cameras.find((c) =>
+            /back|rear|environment/i.test(c.label)
+          );
+          if (backCam) {
+            cameraParam = backCam.id;
+          } else {
+            cameraParam = cameras[0].id;
+          }
         }
-      );
+      } catch (camListErr) {
+        cameraParam = { facingMode: 'environment' };
+      }
+
+      // Try starting with preferred camera; if environment mode is unsupported (e.g. laptop), fall back to user camera
+      try {
+        await html5Qr.start(
+          cameraParam,
+          config,
+          (decodedText: string) => {
+            handleScanSuccessRef.current(decodedText);
+          },
+          () => {
+            // Ignore periodic frame scan misses
+          }
+        );
+      } catch (firstStartErr) {
+        console.warn('Initial camera start failed, attempting user-facing camera fallback:', firstStartErr);
+        await html5Qr.start(
+          { facingMode: 'user' },
+          config,
+          (decodedText: string) => {
+            handleScanSuccessRef.current(decodedText);
+          },
+          () => {}
+        );
+      }
 
       // If component unmounted while camera stream was starting up, shut down immediately
       if (!isMountedRef.current || isPausedRef.current || isSearchFullscreenRef.current) {
@@ -472,8 +505,12 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
               </div>
               <p className="text-xs text-rose-200 max-w-xs">{cameraError}</p>
               <button
-                onClick={startScanner}
-                className="flex items-center gap-2 px-4 py-2 bg-white/15 text-white rounded-xl text-xs font-medium hover:bg-white/25 active:scale-95 transition"
+                onClick={() => {
+                  setCameraError(null);
+                  setScannerActive(true);
+                  startScanner();
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-white/15 text-white rounded-xl text-xs font-medium hover:bg-white/25 active:scale-95 transition cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Retry Camera Permission</span>
