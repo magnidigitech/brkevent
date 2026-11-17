@@ -128,13 +128,6 @@ export function WardEntryCard({
     setArrivingCount(1);
   }, [wardNumber, initialWardData]);
 
-  // Auto scroll to top smoothly whenever attendance is successfully recorded
-  useEffect(() => {
-    if (successResponse && typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [successResponse]);
-
   // Handle Arrival Submission with Instant Optimistic UI + Offline Queue
   const handleRecordArrival = async (acknowledgeExcess: boolean = false) => {
     if (!ward) return;

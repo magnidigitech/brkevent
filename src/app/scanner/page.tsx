@@ -27,8 +27,17 @@ function ScannerContent() {
   const parsedWard = divParam ? parseInt(divParam, 10) : null;
   const selectedWardNumber = parsedWard && !isNaN(parsedWard) && parsedWard >= 1 ? parsedWard : null;
 
+  // Local state for 0ms synchronous UI transition on scan
+  const [localWardNumber, setLocalWardNumber] = useState<number | null>(() => selectedWardNumber);
+
+  useEffect(() => {
+    setLocalWardNumber(selectedWardNumber);
+  }, [selectedWardNumber]);
+
+  const activeWardNumber = localWardNumber ?? selectedWardNumber;
+
   const selectedWardRef = useRef<number | null>(null);
-  selectedWardRef.current = selectedWardNumber;
+  selectedWardRef.current = activeWardNumber;
 
   const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
   const showExitConfirmRef = useRef<boolean>(false);
@@ -130,15 +139,14 @@ function ScannerContent() {
   // Navigation handlers
   const handleWardScanned = useCallback(
     (wardNumber: number) => {
+      setLocalWardNumber(wardNumber);
       router.push(`/scanner?division=${wardNumber}`);
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'instant' });
-      }
     },
     [router]
   );
 
   const handleScanNext = useCallback(() => {
+    setLocalWardNumber(null);
     router.replace('/scanner');
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'instant' });
@@ -148,6 +156,7 @@ function ScannerContent() {
   // Listen for reset events from BottomNav, Header, or anywhere in the app
   useEffect(() => {
     const handleReset = () => {
+      setLocalWardNumber(null);
       router.replace('/scanner');
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, behavior: 'instant' });
@@ -226,9 +235,9 @@ function ScannerContent() {
   }, [showExitConfirm]);
 
   const handleOpenEdit = async () => {
-    if (!selectedWardNumber) return;
+    if (!activeWardNumber) return;
     try {
-      const res = await fetch(`/api/wards/${selectedWardNumber}`);
+      const res = await fetch(`/api/wards/${activeWardNumber}`);
       const data = await res.json();
       if (data?.success && data?.ward) {
         setEditingWard(data.ward);
@@ -315,9 +324,9 @@ function ScannerContent() {
       </div>
 
       {/* Conditionally show Ward Entry Card or Camera Scanner based on URL search param */}
-      {selectedWardNumber ? (
+      {activeWardNumber ? (
         <WardEntryCard
-          wardNumber={selectedWardNumber}
+          wardNumber={activeWardNumber}
           onScanNext={handleScanNext}
           isAdmin={isAdmin}
           onEditWard={handleOpenEdit}
@@ -325,7 +334,7 @@ function ScannerContent() {
       ) : (
         <QRScanner
           onWardScanned={handleWardScanned}
-          isPaused={selectedWardNumber !== null}
+          isPaused={activeWardNumber !== null}
         />
       )}
 

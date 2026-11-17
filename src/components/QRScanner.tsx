@@ -56,6 +56,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
   const isStartingRef = useRef<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
   const hasAutoRetriedRef = useRef<boolean>(false);
+  const hasScannedRef = useRef<boolean>(false);
   const onWardScannedRef = useRef(onWardScanned);
   onWardScannedRef.current = onWardScanned;
   const isPausedRef = useRef(isPaused);
@@ -90,6 +91,8 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
   }, []);
 
   const handleScanSuccess = useCallback(async (decodedText: string) => {
+    if (hasScannedRef.current) return;
+
     const parseResult = parseWardQRCode(decodedText, typeof window !== 'undefined' ? window.location.host : undefined);
 
     if (!parseResult.valid) {
@@ -104,6 +107,8 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
       // 1. Instant cache check (0ms)
       const cachedWardNumber = getCachedCanvaResolution(decodedText);
       if (cachedWardNumber) {
+        hasScannedRef.current = true;
+        stopScanner();
         onWardScannedRef.current(cachedWardNumber);
         return;
       }
@@ -113,7 +118,9 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         const res = await fetch(`/api/qr/resolve?url=${encodeURIComponent(decodedText)}`);
         const data = await res.json();
         if (data.valid && data.wardNumber) {
+          hasScannedRef.current = true;
           cacheCanvaResolution(decodedText, data.wardNumber);
+          stopScanner();
           onWardScannedRef.current(data.wardNumber);
         } else {
           setScannedUrlError(data.message || 'Could not resolve Canva QR destination.');
@@ -127,9 +134,11 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     }
 
     if (parseResult.wardNumber) {
+      hasScannedRef.current = true;
+      stopScanner();
       onWardScannedRef.current(parseResult.wardNumber);
     }
-  }, []);
+  }, [stopScanner]);
 
   const handleScanSuccessRef = useRef(handleScanSuccess);
   handleScanSuccessRef.current = handleScanSuccess;
@@ -138,6 +147,9 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
   const startScanner = useCallback(async () => {
     if (!isMountedRef.current || isPausedRef.current || isSearchFullscreenRef.current) return;
     if (isStartingRef.current) return;
+
+    // Reset scan lock so camera can accept the next code
+    hasScannedRef.current = false;
 
     // If scanner is already scanning, maintain active
     if (scannerRef.current?.isScanning) {
