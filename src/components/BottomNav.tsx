@@ -50,14 +50,23 @@ export function BottomNav() {
 
         {/* Dedicated Standout Scanner Action Button */}
         <div className="flex-1 flex flex-col items-center justify-center -mt-5">
-          <Link
-            href="/scanner"
-            className="w-14 h-14 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white flex flex-col items-center justify-center shadow-[0_8px_20px_rgba(0,0,0,0.25)] border-2 border-white active:scale-95 transition-all group"
+          <button
+            type="button"
+            onClick={() => {
+              if (pathname?.startsWith('/scanner')) {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('reset-scanner-view'));
+                }
+              } else {
+                router.push('/scanner');
+              }
+            }}
+            className="w-14 h-14 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white flex flex-col items-center justify-center shadow-[0_8px_20px_rgba(0,0,0,0.25)] border-2 border-white active:scale-95 transition-all group cursor-pointer"
             title="Scan Invitation QR"
             aria-label="Scan Invitation QR"
           >
             <QrCode className="w-6 h-6 text-white group-hover:scale-105 transition-transform" />
-          </Link>
+          </button>
           <span className={`text-[10px] font-semibold mt-1 tracking-tight ${isScanner ? 'text-neutral-900' : 'text-neutral-500'}`}>
             Scanner
           </span>

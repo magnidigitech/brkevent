@@ -53,22 +53,26 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
   // References to handle Html5Qrcode lifecycle and prevent concurrent state transitions
   const scannerRef = useRef<any>(null);
   const isTransitioningRef = useRef<boolean>(false);
+  const isStartingRef = useRef<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
+  const onWardScannedRef = useRef(onWardScanned);
+  onWardScannedRef.current = onWardScanned;
+  const isPausedRef = useRef(isPaused);
+  isPausedRef.current = isPaused;
+  const isSearchFullscreenRef = useRef(isSearchFullscreen);
+  isSearchFullscreenRef.current = isSearchFullscreen;
   const qrRegionId = 'qr-reader-container';
 
   // Stop scanner safely and release hardware
   const stopScanner = useCallback(async () => {
-    // Force stop all camera hardware tracks first
-    stopAllCameraStreams();
-
     if (!scannerRef.current) {
+      stopAllCameraStreams();
       isTransitioningRef.current = false;
       return;
     }
 
     try {
       const scanner = scannerRef.current;
-      scannerRef.current = null;
       if (scanner.isScanning) {
         await scanner.stop();
       }
@@ -101,7 +105,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
       // 1. Instant cache check (0ms)
       const cachedWardNumber = getCachedCanvaResolution(decodedText);
       if (cachedWardNumber) {
-        onWardScanned(cachedWardNumber);
+        onWardScannedRef.current(cachedWardNumber);
         return;
       }
 
@@ -111,7 +115,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         const data = await res.json();
         if (data.valid && data.wardNumber) {
           cacheCanvaResolution(decodedText, data.wardNumber);
-          onWardScanned(data.wardNumber);
+          onWardScannedRef.current(data.wardNumber);
         } else {
           setScannedUrlError(data.message || 'Could not resolve Canva QR destination.');
         }
@@ -124,14 +128,22 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     }
 
     if (parseResult.wardNumber) {
-      onWardScanned(parseResult.wardNumber);
+      onWardScannedRef.current(parseResult.wardNumber);
     }
-  }, [onWardScanned]);
+  }, []);
 
-  // Start scanner safely with transition protection
+  // Start scanner safely with transition protection and concurrency lock
   const startScanner = useCallback(async () => {
-    if (!isMountedRef.current || isPaused) return;
+    if (!isMountedRef.current || isPausedRef.current || isSearchFullscreenRef.current) return;
+    if (isStartingRef.current) return;
 
+    // If scanner is already scanning, we are good!
+    if (scannerRef.current?.isScanning) {
+      setScannerActive(true);
+      return;
+    }
+
+    isStartingRef.current = true;
     setCameraError(null);
     setScannedUrlError(null);
     setIsInitializing(true);
@@ -140,16 +152,13 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
     try {
       const { Html5Qrcode } = await import('html5-qrcode');
 
-      if (!isMountedRef.current || isPaused) {
-        stopAllCameraStreams();
+      if (!isMountedRef.current || isPausedRef.current || isSearchFullscreenRef.current) {
         return;
       }
 
       // Verify DOM element exists
       const containerEl = document.getElementById(qrRegionId);
       if (!containerEl) {
-        isTransitioningRef.current = false;
-        setIsInitializing(false);
         return;
       }
 
@@ -157,11 +166,9 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         scannerRef.current = new Html5Qrcode(qrRegionId);
       }
 
-      // If already scanning, stop first
       if (scannerRef.current.isScanning) {
-        try {
-          await scannerRef.current.stop();
-        } catch {}
+        setScannerActive(true);
+        return;
       }
 
       const config = {
@@ -182,26 +189,19 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         }
       );
 
-      // CRITICAL CHECK: If component unmounted while camera stream was starting up, shut down immediately
-      if (!isMountedRef.current || isPaused) {
-        stopAllCameraStreams();
-        if (scannerRef.current) {
+      // If component unmounted while camera stream was starting up, shut down immediately
+      if (!isMountedRef.current || isPausedRef.current || isSearchFullscreenRef.current) {
+        if (scannerRef.current?.isScanning) {
           try {
-            if (scannerRef.current.isScanning) {
-              await scannerRef.current.stop();
-            }
+            await scannerRef.current.stop();
           } catch {}
-          try {
-            await scannerRef.current.clear();
-          } catch {}
-          scannerRef.current = null;
         }
+        stopAllCameraStreams();
         return;
       }
 
-      if (isMountedRef.current) {
-        setScannerActive(true);
-      }
+      setScannerActive(true);
+      setCameraError(null);
     } catch (err: unknown) {
       const errObj = err instanceof Error ? err : new Error(String(err));
       const msg = errObj.message || '';
@@ -212,7 +212,6 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         msg.includes('media was removed') ||
         msg.includes('already under transition')
       ) {
-        stopAllCameraStreams();
         return;
       }
 
@@ -229,38 +228,35 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
         setScannerActive(false);
       }
     } finally {
+      isStartingRef.current = false;
       isTransitioningRef.current = false;
       if (isMountedRef.current) {
         setIsInitializing(false);
       }
     }
-  }, [handleScanSuccess, isPaused]);
+  }, [handleScanSuccess]);
 
-  // Synchronize scanner lifecycle with paused state and active toggle
   // Manage camera lifecycle and auto-stop on pause or full-screen search
   useEffect(() => {
     isMountedRef.current = true;
     const effectivelyPaused = isPaused || isSearchFullscreen;
 
     if (effectivelyPaused) {
-      stopAllCameraStreams();
       stopScanner();
     } else if (scannerActive) {
       // Small timeout allows DOM to fully settle before requesting video stream
       const timer = setTimeout(() => {
-        if (isMountedRef.current && !effectivelyPaused) {
+        if (isMountedRef.current && !isPaused && !isSearchFullscreen) {
           startScanner();
         }
-      }, 100);
+      }, 150);
       return () => {
         clearTimeout(timer);
-        stopAllCameraStreams();
       };
     }
 
     return () => {
       isMountedRef.current = false;
-      stopAllCameraStreams();
       stopScanner();
     };
   }, [isPaused, isSearchFullscreen, scannerActive, startScanner, stopScanner]);
@@ -270,7 +266,9 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
       await stopScanner();
       setScannerActive(false);
     } else {
+      setCameraError(null);
       setScannerActive(true);
+      await startScanner();
     }
   };
 

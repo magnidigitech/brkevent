@@ -271,7 +271,7 @@ export function WardEntryCard({
   const isSpecial = ward.ward_number >= 101 || ['VIP', 'SPECIAL', 'GUEST', 'ALLIANCE'].includes(ward.party);
 
   return (
-    <div className="w-full max-w-lg flex flex-col gap-4">
+    <div className="w-full max-w-lg flex flex-col gap-4 pb-12 sm:pb-4">
       {/* SUCCESS CONFIRMATION BANNER */}
       {successResponse && (
         <div className="bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-5 shadow-sm text-emerald-950 flex flex-col gap-3">
@@ -360,7 +360,7 @@ export function WardEntryCard({
                 </div>
               </div>
 
-              <PartyBadge party={ward.party} size="md" />
+              {!isSpecial && <PartyBadge party={ward.party} size="md" />}
             </div>
 
             {/* Candidate Details with Portrait Photo */}
@@ -672,14 +672,14 @@ export function WardEntryCard({
                     Allowance Exceeded Warning
                   </h4>
                   <p className="text-xs text-amber-800 mt-1 font-normal leading-relaxed">
-                    This invitation allows 5 people including the principal invitee. This entry will bring attendance to{' '}
+                    This invitation allows {ward.allowance} {ward.allowance === 1 ? 'person' : 'people'} including the principal invitee. This entry will bring attendance to{' '}
                     <span className="font-semibold underline">{excessWarningDetails.proposedTotal}</span>, exceeding the allowance by{' '}
                     <span className="font-semibold underline">{excessWarningDetails.excessBy}</span>.
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 flex flex-col sm:flex-row gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -687,7 +687,7 @@ export function WardEntryCard({
                     setSubmissionError(null);
                   }}
                   disabled={submitting}
-                  className="flex-1 py-2.5 bg-white border border-neutral-300 text-neutral-700 font-medium text-xs sm:text-sm rounded-xl hover:bg-neutral-50 shadow-2xs transition-colors"
+                  className="w-full sm:flex-1 py-3 bg-white border border-neutral-300 text-neutral-700 font-semibold text-xs sm:text-sm rounded-xl hover:bg-neutral-50 shadow-2xs transition-colors cursor-pointer"
                 >
                   Go Back
                 </button>
@@ -696,7 +696,7 @@ export function WardEntryCard({
                   type="button"
                   onClick={() => handleRecordArrival(true)}
                   disabled={submitting}
-                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs sm:text-sm rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                  className="w-full sm:flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {submitting ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />

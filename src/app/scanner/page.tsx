@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QRScanner } from '@/components/QRScanner';
@@ -127,23 +127,31 @@ export default function ScannerPage() {
       });
   }, []);
 
-  const handleWardScanned = (wardNumber: number) => {
+  const handleWardScanned = useCallback((wardNumber: number) => {
     setSelectedWardNumber(wardNumber);
     if (typeof window !== 'undefined') {
       window.history.pushState({ wardNumber, view: 'result' }, '', `/scanner?division=${wardNumber}`);
     }
-  };
+  }, []);
 
-  const handleScanNext = () => {
+  const handleScanNext = useCallback(() => {
     setSelectedWardNumber(null);
     if (typeof window !== 'undefined') {
-      if (window.location.search.includes('division=')) {
-        window.history.back();
-      } else {
+      window.history.replaceState({ scannerActive: true }, '', '/scanner');
+    }
+  }, []);
+
+  // Listen for reset events from BottomNav or elsewhere
+  useEffect(() => {
+    const handleReset = () => {
+      setSelectedWardNumber(null);
+      if (typeof window !== 'undefined') {
         window.history.replaceState({ scannerActive: true }, '', '/scanner');
       }
-    }
-  };
+    };
+    window.addEventListener('reset-scanner-view', handleReset);
+    return () => window.removeEventListener('reset-scanner-view', handleReset);
+  }, []);
 
   const handleConfirmExit = () => {
     setShowExitConfirm(false);
@@ -183,7 +191,7 @@ export default function ScannerPage() {
           return;
         } else {
           const num = parseInt(divParam, 10);
-          if (num >= 1 && num <= 76) {
+          if (num >= 1) {
             setSelectedWardNumber(num);
             return;
           }
@@ -287,7 +295,7 @@ export default function ScannerPage() {
   }
 
   return (
-    <div className="flex-1 py-8 px-4 sm:px-6 flex flex-col items-center justify-start pb-28 sm:pb-8">
+    <div className="flex-1 py-8 px-4 sm:px-6 flex flex-col items-center justify-start pb-36 sm:pb-12">
       {/* Top Title Banner (Apple Minimalist Style) */}
       <div className="w-full max-w-lg mb-6 text-center">
         {/* Offline Status & Sync Queue Pill */}
