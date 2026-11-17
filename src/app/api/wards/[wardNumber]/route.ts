@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getWardByNumber, updateWardAdmin } from '@/lib/server/dataStore';
+import { getWardByNumber, updateWardAdmin, deleteWardAdmin } from '@/lib/server/dataStore';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -12,9 +12,9 @@ export async function GET(
     const { wardNumber: rawWard } = await params;
     const wardNumber = parseInt(rawWard, 10);
 
-    if (isNaN(wardNumber) || wardNumber < 1 || wardNumber > 76) {
+    if (isNaN(wardNumber) || wardNumber < 1) {
       return NextResponse.json(
-        { success: false, message: `Division number ${rawWard} is invalid. Divisions must be 1 to 76.` },
+        { success: false, message: `Pass number ${rawWard} is invalid. Number must be at least 1.` },
         { status: 400 }
       );
     }
@@ -22,14 +22,14 @@ export async function GET(
     const ward = await getWardByNumber(wardNumber);
     if (!ward) {
       return NextResponse.json(
-        { success: false, message: `Division ${wardNumber} not found.` },
+        { success: false, message: `Record #${wardNumber} not found.` },
         { status: 404 }
       );
     }
 
     return NextResponse.json({ success: true, ward });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch ward';
+    const message = err instanceof Error ? err.message : 'Failed to fetch record';
     return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
@@ -42,8 +42,8 @@ export async function PATCH(
     const { wardNumber: rawWard } = await params;
     const wardNumber = parseInt(rawWard, 10);
 
-    if (isNaN(wardNumber) || wardNumber < 1 || wardNumber > 76) {
-      return NextResponse.json({ success: false, message: 'Invalid division number.' }, { status: 400 });
+    if (isNaN(wardNumber) || wardNumber < 1) {
+      return NextResponse.json({ success: false, message: 'Invalid record number.' }, { status: 400 });
     }
 
     // Role check: Admin only
@@ -68,7 +68,7 @@ export async function PATCH(
 
       if (profile?.role !== 'admin') {
         return NextResponse.json(
-          { success: false, message: 'Forbidden: Scanner staff cannot edit ward details or food counts.' },
+          { success: false, message: 'Forbidden: Scanner staff cannot edit details or allowance.' },
           { status: 403 }
         );
       }
@@ -78,7 +78,7 @@ export async function PATCH(
       const role = request.cookies.get('brk_dev_role')?.value;
       if (role === 'scanner') {
         return NextResponse.json(
-          { success: false, message: 'Forbidden: Scanner staff cannot edit ward details or food counts.' },
+          { success: false, message: 'Forbidden: Scanner staff cannot edit details or allowance.' },
           { status: 403 }
         );
       }
@@ -93,8 +93,64 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, ward: result.ward, message: result.message });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to update ward';
+    const message = err instanceof Error ? err.message : 'Failed to update record';
     return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ wardNumber: string }> }
+) {
+  try {
+    const { wardNumber: rawWard } = await params;
+    const wardNumber = parseInt(rawWard, 10);
+
+    if (isNaN(wardNumber) || wardNumber <= 76) {
+      return NextResponse.json(
+        { success: false, message: 'Cannot delete standard corporator divisions (1-76).' },
+        { status: 400 }
+      );
+    }
+
+    // Role check: Admin only
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    let adminUser = { id: 'admin-user', name: 'Event Administrator' };
+
+    if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, full_name')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.role !== 'admin') {
+        return NextResponse.json(
+          { success: false, message: 'Forbidden: Scanner staff cannot delete guest records.' },
+          { status: 403 }
+        );
+      }
+
+      adminUser = { id: user.id, name: profile.full_name || 'Admin' };
+    }
+
+    const result = await deleteWardAdmin(wardNumber, adminUser);
+    if (!result.success) {
+      return NextResponse.json({ success: false, message: result.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, message: result.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to delete record';
+    return NextResponse.json({ success: false, message }, { status: 500 });
+  }
+}

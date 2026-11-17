@@ -31,11 +31,13 @@ import {
   CheckCheck,
   Menu,
   SlidersHorizontal,
-  ChevronRight
+  ChevronRight,
+  UserPlus
 } from 'lucide-react';
 import { WardWithStats, ArrivalBatch, DashboardSummary } from '@/types/database';
 import { PartyBadge } from '@/components/PartyBadge';
 import { AdminWardEditModal } from '@/components/AdminWardEditModal';
+import { AddSpecialGuestModal } from '@/components/AddSpecialGuestModal';
 import { WardEntryCard } from '@/components/WardEntryCard';
 import { SettingsModal } from '@/components/SettingsModal';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
@@ -68,7 +70,10 @@ export default function DashboardPage() {
   const [partyFilter, setPartyFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL'); // 'ALL' | 'ARRIVED' | 'NOT_ARRIVED' | 'OVER_ALLOWANCE'
   const [foodFilter, setFoodFilter] = useState<string>('ALL'); // 'ALL' | 'CONFIRMED' | 'UNCONFIRMED' | 'UNSET' | 'MISMATCH'
-  const [scopeFilter, setScopeFilter] = useState<'WINNERS' | 'ALL'>('WINNERS');
+  const [scopeFilter, setScopeFilter] = useState<'WINNERS' | 'SPECIAL' | 'ALL'>('WINNERS');
+
+  // Add Special Guest Modal State
+  const [isAddSpecialGuestOpen, setIsAddSpecialGuestOpen] = useState<boolean>(false);
 
   // Admin Ward Edit Modal State
   const [selectedWardForEdit, setSelectedWardForEdit] = useState<WardWithStats | null>(null);
@@ -238,10 +243,13 @@ export default function DashboardPage() {
     }
   };
 
-  // Active scope wards (Winning 64 vs All 76)
+  // Active scope wards (Winning 64 vs Special Guests vs All)
   const activeScopeWards = useMemo(() => {
     if (scopeFilter === 'WINNERS') {
       return wards.filter((w) => WINNING_WARD_NUMBERS.has(w.ward_number));
+    }
+    if (scopeFilter === 'SPECIAL') {
+      return wards.filter((w) => w.ward_number >= 101 || ['VIP', 'SPECIAL', 'GUEST', 'ALLIANCE'].includes(w.party));
     }
     return wards;
   }, [wards, scopeFilter]);
@@ -257,9 +265,11 @@ export default function DashboardPage() {
     let expectedVegTotal = 0;
     let expectedNonVegTotal = 0;
     let wardsUnconfirmedFood = 0;
+    let dynamicCap = 0;
 
     activeScopeWards.forEach((w) => {
       totalEntered += w.total_entered;
+      dynamicCap += (w.allowance || 5);
       if (w.total_entered > 0) wardsWithArrivals += 1;
       else wardsWithoutArrivals += 1;
 
@@ -281,7 +291,7 @@ export default function DashboardPage() {
 
     return {
       total_entered: totalEntered,
-      normal_total_allowance: totalCount * 5,
+      normal_total_allowance: dynamicCap,
       wards_with_arrivals: wardsWithArrivals,
       wards_without_arrivals: wardsWithoutArrivals,
       wards_exceeding_allowance: wardsExceedingAllowance,
@@ -304,7 +314,7 @@ export default function DashboardPage() {
     // If more than 2 digits (3+ digits, e.g. "98851", "4343"), check against phone numbers.
     const allowPhoneSearch = digitCount > 2;
 
-    const wardPrefixMatch = q.match(/^(?:w|ward|d|div|division)[ -]?(\d{1,2})$/i);
+    const wardPrefixMatch = q.match(/^(?:w|ward|d|div|division|pass|vip|guest)[ -]?(\d{1,4})$/i);
     const targetWardNum = isPureDigits
       ? parseInt(q, 10)
       : wardPrefixMatch
@@ -315,12 +325,13 @@ export default function DashboardPage() {
       if (q) {
         let matchWardNo = false;
         if (targetWardNum !== null) {
-          // Single and double digit numbers match EXACT division only (e.g. "1" matches Division 1 only, never 10, 11, etc.)
           matchWardNo = w.ward_number === targetWardNum;
         } else if (!isPureDigits && q.length > 2) {
           matchWardNo =
             `division ${w.ward_number}` === q ||
-            `ward ${w.ward_number}` === q;
+            `ward ${w.ward_number}` === q ||
+            `pass ${w.ward_number}` === q ||
+            `guest ${w.ward_number}` === q;
         }
 
         const matchName = !isPureDigits && w.candidate_name ? w.candidate_name.toLowerCase().includes(q) : false;
@@ -406,6 +417,17 @@ export default function DashboardPage() {
 
           {/* Desktop Only Actions */}
           <div className="hidden sm:flex items-center gap-2">
+            {/* Add Special Guest Button */}
+            <button
+              type="button"
+              onClick={() => setIsAddSpecialGuestOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 rounded-xl text-xs font-semibold shadow-2xs transition-colors"
+              title="Add Special Guest / VIP Invitee"
+            >
+              <UserPlus className="w-3.5 h-3.5 text-purple-600" />
+              <span>+ Add Guest / VIP</span>
+            </button>
+
             {/* WhatsApp & Message Settings Button */}
             <button
               type="button"
@@ -830,11 +852,12 @@ export default function DashboardPage() {
                 {/* Scope Filter */}
                 <select
                   value={scopeFilter}
-                  onChange={(e) => setScopeFilter(e.target.value as 'WINNERS' | 'ALL')}
+                  onChange={(e) => setScopeFilter(e.target.value as 'WINNERS' | 'SPECIAL' | 'ALL')}
                   className="px-3.5 py-2 text-xs font-semibold border border-amber-300 rounded-xl bg-amber-50/80 text-amber-900 focus:border-amber-600 focus:outline-none transition-colors"
                 >
                   <option value="WINNERS">Winning Corporators (64)</option>
-                  <option value="ALL">All Divisions (76)</option>
+                  <option value="SPECIAL">Special Guests & VIPs</option>
+                  <option value="ALL">All Invitees & Divisions</option>
                 </select>
 
                 {/* Party Filter */}
@@ -843,10 +866,13 @@ export default function DashboardPage() {
                   onChange={(e) => setPartyFilter(e.target.value)}
                   className="px-3.5 py-2 text-xs font-medium border border-neutral-200 rounded-xl bg-neutral-50/80 text-neutral-800 focus:border-neutral-900 focus:outline-none transition-colors"
                 >
-                  <option value="ALL">All Parties</option>
-                  <option value="TDP">TDP (57)</option>
-                  <option value="JSP">JSP (15)</option>
-                  <option value="BJP">BJP (4)</option>
+                  <option value="ALL">All Categories</option>
+                  <option value="TDP">TDP</option>
+                  <option value="JSP">JSP</option>
+                  <option value="BJP">BJP</option>
+                  <option value="VIP">VIP Invitees</option>
+                  <option value="SPECIAL">Special Guests</option>
+                  <option value="ALLIANCE">Alliance Leaders</option>
                 </select>
 
                 {/* Attendance Status Filter */}
@@ -918,14 +944,16 @@ export default function DashboardPage() {
                                   ? 'bg-[#FFF6CC] text-[#7A5B00] border-[#FFCC00]/40'
                                   : w.party === 'JSP'
                                   ? 'bg-[#FFEBEA] text-[#D70015] border-[#FF3B30]/30'
-                                  : 'bg-[#FFF1E5] text-[#C93400] border-[#FF9500]/30'
+                                  : w.party === 'BJP'
+                                  ? 'bg-[#FFF1E5] text-[#C93400] border-[#FF9500]/30'
+                                  : 'bg-purple-100 text-purple-800 border-purple-200'
                               }`}
                             >
                               {w.ward_number}
                             </span>
                             <div>
                               <span className="text-xs text-neutral-400 font-medium block">
-                                Division {w.ward_number}
+                                {w.ward_number >= 101 ? 'VIP / Special Pass' : `Division ${w.ward_number}`}
                               </span>
                               <h3 className="font-semibold text-base text-neutral-900 leading-snug tracking-tight">
                                 {w.candidate_name}
@@ -1076,7 +1104,7 @@ export default function DashboardPage() {
                             }`}
                           >
                             <td className="py-3 px-4 font-semibold text-neutral-900">
-                              Division {w.ward_number}
+                              {w.ward_number >= 101 ? `Pass #${w.ward_number}` : `Division ${w.ward_number}`}
                             </td>
                             <td className="py-3 px-4">
                               <span className="font-medium text-neutral-900 block">{w.candidate_name}</span>
@@ -1191,11 +1219,12 @@ export default function DashboardPage() {
                 {/* Scope Filter */}
                 <select
                   value={scopeFilter}
-                  onChange={(e) => setScopeFilter(e.target.value as 'WINNERS' | 'ALL')}
+                  onChange={(e) => setScopeFilter(e.target.value as 'WINNERS' | 'SPECIAL' | 'ALL')}
                   className="px-3.5 py-2 text-xs font-semibold border border-amber-300 rounded-xl bg-amber-50/80 text-amber-900 focus:border-amber-600 focus:outline-none transition-colors"
                 >
                   <option value="WINNERS">Winning Corporators (64)</option>
-                  <option value="ALL">All Divisions (76)</option>
+                  <option value="SPECIAL">Special Guests & VIPs</option>
+                  <option value="ALL">All Invitees & Divisions</option>
                 </select>
 
                 {/* Party Filter */}
@@ -1204,10 +1233,13 @@ export default function DashboardPage() {
                   onChange={(e) => setPartyFilter(e.target.value)}
                   className="px-3.5 py-2 text-xs font-medium border border-neutral-200 rounded-xl bg-neutral-50/80 text-neutral-800 focus:border-neutral-900 focus:outline-none transition-colors"
                 >
-                  <option value="ALL">All Parties</option>
-                  <option value="TDP">TDP (57)</option>
-                  <option value="JSP">JSP (15)</option>
-                  <option value="BJP">BJP (4)</option>
+                  <option value="ALL">All Categories</option>
+                  <option value="TDP">TDP</option>
+                  <option value="JSP">JSP</option>
+                  <option value="BJP">BJP</option>
+                  <option value="VIP">VIP Invitees</option>
+                  <option value="SPECIAL">Special Guests</option>
+                  <option value="ALLIANCE">Alliance Leaders</option>
                 </select>
 
                 {/* Food Status Filter */}
@@ -1282,14 +1314,16 @@ export default function DashboardPage() {
                                   ? 'bg-[#FFF6CC] text-[#7A5B00] border-[#FFCC00]/40'
                                   : w.party === 'JSP'
                                   ? 'bg-[#FFEBEA] text-[#D70015] border-[#FF3B30]/30'
-                                  : 'bg-[#FFF1E5] text-[#C93400] border-[#FF9500]/30'
+                                  : w.party === 'BJP'
+                                  ? 'bg-[#FFF1E5] text-[#C93400] border-[#FF9500]/30'
+                                  : 'bg-purple-100 text-purple-800 border-purple-200'
                               }`}
                             >
                               {w.ward_number}
                             </span>
                             <div>
                               <span className="text-xs text-neutral-400 font-medium block">
-                                Division {w.ward_number}
+                                {w.ward_number >= 101 ? 'VIP / Special Pass' : `Division ${w.ward_number}`}
                               </span>
                               <h3 className="font-semibold text-base text-neutral-900 leading-snug tracking-tight">
                                 {w.candidate_name}
@@ -1429,7 +1463,7 @@ export default function DashboardPage() {
                             }`}
                           >
                             <td className="py-3 px-4 font-semibold text-neutral-900">
-                              Division {w.ward_number}
+                              {w.ward_number >= 101 ? `Pass #${w.ward_number}` : `Division ${w.ward_number}`}
                             </td>
                             <td className="py-3 px-4">
                               <span className="font-medium text-neutral-900 block">{w.candidate_name}</span>
@@ -1703,6 +1737,23 @@ export default function DashboardPage() {
           onClose={() => setSelectedWardForEdit(null)}
           onSaved={() => {
             setSelectedWardForEdit(null);
+            loadDashboardData();
+          }}
+          onDeleted={(deletedNum) => {
+            setSelectedWardForEdit(null);
+            setWards((prev) => prev.filter((w) => w.ward_number !== deletedNum));
+            loadDashboardData();
+          }}
+        />
+      )}
+
+      {/* ADD SPECIAL GUEST / VIP MODAL */}
+      {isAddSpecialGuestOpen && (
+        <AddSpecialGuestModal
+          onClose={() => setIsAddSpecialGuestOpen(false)}
+          onCreated={(newWard) => {
+            setIsAddSpecialGuestOpen(false);
+            setWards((prev) => [newWard, ...prev.filter((w) => w.ward_number !== newWard.ward_number)]);
             loadDashboardData();
           }}
         />
@@ -1995,6 +2046,21 @@ export default function DashboardPage() {
                 Tools & Reports
               </span>
               <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsAddSpecialGuestOpen(true);
+                  }}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-900 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <UserPlus className="w-4 h-4 text-purple-600" />
+                    <span className="text-xs font-semibold">+ Add Special Guest / VIP</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-purple-400" />
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {

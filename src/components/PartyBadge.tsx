@@ -55,6 +55,32 @@ export function PartyBadge({ party, size = 'md', className = '' }: PartyBadgePro
     );
   }
 
+  // VIP & Special Guests
+  if (normalizedParty === 'VIP' || normalizedParty === 'SPECIAL' || normalizedParty === 'GUEST') {
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 font-semibold rounded-full bg-purple-50 text-purple-700 border border-purple-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${sizeClasses} ${className}`}
+        aria-label={`Category: ${party}`}
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-purple-600 inline-block shrink-0" aria-hidden="true" />
+        <span>{normalizedParty === 'VIP' ? 'VIP Invitee' : 'Special Guest'}</span>
+      </span>
+    );
+  }
+
+  // NDA / Alliance Guests
+  if (normalizedParty === 'ALLIANCE') {
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${sizeClasses} ${className}`}
+        aria-label="Category: Alliance"
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block shrink-0" aria-hidden="true" />
+        <span>Alliance Guest</span>
+      </span>
+    );
+  }
+
   return (
     <span className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-neutral-100 text-neutral-700 border border-neutral-200 ${sizeClasses} ${className}`}>
       <span>{party}</span>

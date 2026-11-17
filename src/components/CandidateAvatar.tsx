@@ -10,12 +10,13 @@ import {
 } from '@/lib/candidatePhotos';
 import winningCorporatorsData from '@/data/winningCorporators.json';
 import { PartyBadge } from '@/components/PartyBadge';
+import { PartyAffiliation } from '@/types/database';
 
 interface CandidateAvatarProps {
   wardNumber: number;
   candidateName: string;
   candidateNameTe?: string;
-  party?: 'TDP' | 'JSP' | 'BJP';
+  party?: PartyAffiliation;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
   showWinnerRing?: boolean;

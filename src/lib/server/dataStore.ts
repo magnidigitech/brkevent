@@ -7,6 +7,7 @@ import {
   RecordArrivalPayload,
   RecordArrivalResponse,
   UserProfile,
+  PartyAffiliation,
 } from '@/types/database';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -170,11 +171,11 @@ export async function getAllWards(): Promise<WardWithStats[]> {
 }
 
 /**
- * Get single ward by ward number (1-76)
+ * Get single ward by ward number (1-76 for corporators, 101+ for special guests)
  * OPTIMIZED: Parallel queries for sub-100ms loading
  */
 export async function getWardByNumber(wardNumber: number): Promise<WardWithStats | null> {
-  if (wardNumber < 1 || wardNumber > 76) return null;
+  if (wardNumber < 1) return null;
 
   if (isSupabaseConfigured()) {
     try {
@@ -464,13 +465,14 @@ export async function updateWardAdmin(
   wardNumber: number,
   updates: {
     candidate_name?: string;
-    party?: 'TDP' | 'JSP' | 'BJP';
+    party?: PartyAffiliation;
+    allowance?: number;
     phone?: string | null;
     expected_veg?: number | null;
     expected_non_veg?: number | null;
     food_confirmed?: boolean;
     admin_notes?: string | null;
-    guests?: Array<{ guest_number: number; guest_name: string }>;
+    guests?: Array<{ guest_number?: number; guest_name: string }>;
   },
   adminUser: { id: string; name: string }
 ): Promise<{ success: boolean; ward?: WardWithStats; message: string }> {
@@ -481,6 +483,11 @@ export async function updateWardAdmin(
   if (inMemWard) {
     if (updates.candidate_name !== undefined) inMemWard.candidate_name = updates.candidate_name;
     if (updates.party !== undefined) inMemWard.party = updates.party;
+    if (updates.allowance !== undefined && updates.allowance > 0) {
+      inMemWard.allowance = updates.allowance;
+      inMemWard.remaining_allowance = Math.max(0, updates.allowance - inMemWard.total_entered);
+      inMemWard.excess_count = Math.max(0, inMemWard.total_entered - updates.allowance);
+    }
     if (updates.phone !== undefined) inMemWard.phone = updates.phone;
     if (updates.expected_veg !== undefined) inMemWard.expected_veg = updates.expected_veg;
     if (updates.expected_non_veg !== undefined) inMemWard.expected_non_veg = updates.expected_non_veg;
@@ -490,11 +497,11 @@ export async function updateWardAdmin(
 
     if (updates.guests !== undefined) {
       const validGuests: WardGuest[] = updates.guests
-        .filter((g) => g.guest_number >= 1 && g.guest_number <= 4 && g.guest_name.trim().length > 0)
-        .map((g) => ({
-          id: `guest-${wardNumber}-${g.guest_number}`,
+        .filter((g) => g.guest_name.trim().length > 0)
+        .map((g, idx) => ({
+          id: `guest-${wardNumber}-${g.guest_number || idx + 1}`,
           ward_id: inMemWard.id,
-          guest_number: g.guest_number,
+          guest_number: g.guest_number || idx + 1,
           guest_name: g.guest_name.trim(),
           updated_at: new Date().toISOString(),
         }));
@@ -512,6 +519,7 @@ export async function updateWardAdmin(
       };
       if (updates.candidate_name !== undefined) updateFields.candidate_name = updates.candidate_name;
       if (updates.party !== undefined) updateFields.party = updates.party;
+      if (updates.allowance !== undefined && updates.allowance > 0) updateFields.allowance = updates.allowance;
       if (updates.phone !== undefined) updateFields.phone = updates.phone;
       if (updates.expected_veg !== undefined) updateFields.expected_veg = updates.expected_veg;
       if (updates.expected_non_veg !== undefined) updateFields.expected_non_veg = updates.expected_non_veg;
@@ -533,14 +541,12 @@ export async function updateWardAdmin(
       if (dbWard && updates.guests !== undefined) {
         // Sync guests: remove old guests and insert new ones
         await supabase.from('ward_guests').delete().eq('ward_id', dbWard.id);
-        const validGuests = updates.guests.filter(
-          (g) => g.guest_number >= 1 && g.guest_number <= 4 && g.guest_name.trim().length > 0
-        );
+        const validGuests = updates.guests.filter((g) => g.guest_name.trim().length > 0);
         if (validGuests.length > 0) {
           await supabase.from('ward_guests').insert(
-            validGuests.map((g) => ({
+            validGuests.map((g, idx) => ({
               ward_id: dbWard.id,
-              guest_number: g.guest_number,
+              guest_number: g.guest_number || idx + 1,
               guest_name: g.guest_name.trim(),
             }))
           );
@@ -556,17 +562,18 @@ export async function updateWardAdmin(
           performed_by: adminUser.id.startsWith('admin') ? '00000000-0000-0000-0000-000000000000' : adminUser.id,
           old_data: oldData,
           new_data: updateFields,
-          reason: 'Admin updated ward details or food counts',
+          reason: 'Admin updated details, allowance, or guests',
         });
       } catch {}
 
       // Return fresh persisted ward from DB
       const freshWard = await getWardByNumber(wardNumber);
       if (freshWard) {
+        globalState.wards.set(wardNumber, freshWard);
         return {
           success: true,
           ward: freshWard,
-          message: 'Division details and food counts saved successfully.',
+          message: 'Details and allowance updated successfully.',
         };
       }
     } catch (err) {
@@ -595,6 +602,190 @@ export async function updateWardAdmin(
 }
 
 /**
+ * Register a new Special Guest / VIP Invitee with custom allowance and entourage
+ */
+export async function createSpecialGuestAdmin(
+  payload: {
+    candidate_name: string;
+    party?: PartyAffiliation;
+    phone?: string | null;
+    allowance?: number;
+    expected_veg?: number | null;
+    expected_non_veg?: number | null;
+    food_confirmed?: boolean;
+    admin_notes?: string | null;
+    guests?: Array<{ guest_name: string }>;
+  },
+  adminUser: { id: string; name: string }
+): Promise<{ success: boolean; ward?: WardWithStats; message: string }> {
+  const allowance = payload.allowance && payload.allowance > 0 ? payload.allowance : 5;
+  const party: PartyAffiliation = payload.party || 'VIP';
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createAdminClient();
+
+      // Find highest ward_number >= 101, or default to 101
+      const { data: maxWard } = await supabase
+        .from('wards')
+        .select('ward_number')
+        .gte('ward_number', 101)
+        .order('ward_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextWardNumber = maxWard?.ward_number ? maxWard.ward_number + 1 : 101;
+
+      const { data: insertedWard, error: insertErr } = await supabase
+        .from('wards')
+        .insert({
+          ward_number: nextWardNumber,
+          candidate_name: payload.candidate_name.trim(),
+          party,
+          allowance,
+          phone: payload.phone?.trim() || null,
+          expected_veg: payload.expected_veg ?? null,
+          expected_non_veg: payload.expected_non_veg ?? null,
+          food_confirmed: payload.food_confirmed ?? false,
+          admin_notes: payload.admin_notes?.trim() || null,
+        })
+        .select()
+        .single();
+
+      if (insertErr || !insertedWard) {
+        throw insertErr || new Error('Failed to insert new guest record.');
+      }
+
+      // Insert accompanying guests if provided
+      const validGuests = (payload.guests || []).filter((g) => g.guest_name && g.guest_name.trim().length > 0);
+      if (validGuests.length > 0) {
+        await supabase.from('ward_guests').insert(
+          validGuests.map((g, idx) => ({
+            ward_id: insertedWard.id,
+            guest_number: idx + 1,
+            guest_name: g.guest_name.trim(),
+          }))
+        );
+      }
+
+      // Record audit log
+      try {
+        await supabase.from('audit_logs').insert({
+          action: 'create_special_guest',
+          ward_id: insertedWard.id,
+          performed_by: adminUser.id.startsWith('admin') ? '00000000-0000-0000-0000-000000000000' : adminUser.id,
+          old_data: null,
+          new_data: {
+            ward_number: nextWardNumber,
+            candidate_name: payload.candidate_name,
+            party,
+            allowance,
+          },
+          reason: `Admin registered special guest / VIP #${nextWardNumber}`,
+        });
+      } catch {}
+
+      const freshWard = await getWardByNumber(nextWardNumber);
+      if (freshWard) {
+        globalState.wards.set(nextWardNumber, freshWard);
+        return {
+          success: true,
+          ward: freshWard,
+          message: `Special guest "${payload.candidate_name}" registered successfully with Pass #${nextWardNumber}.`,
+        };
+      }
+    } catch (err) {
+      console.warn('Supabase createSpecialGuestAdmin error, falling back to local store:', err);
+    }
+  }
+
+  // In-memory fallback
+  const existingSpecial = Array.from(globalState.wards.values())
+    .map((w) => w.ward_number)
+    .filter((num) => num >= 101);
+  const nextWardNumber = existingSpecial.length > 0 ? Math.max(...existingSpecial) + 1 : 101;
+
+  const validGuests: WardGuest[] = (payload.guests || [])
+    .filter((g) => g.guest_name && g.guest_name.trim().length > 0)
+    .map((g, idx) => ({
+      id: `guest-${nextWardNumber}-${idx + 1}`,
+      ward_id: nextWardNumber,
+      guest_number: idx + 1,
+      guest_name: g.guest_name.trim(),
+      updated_at: new Date().toISOString(),
+    }));
+
+  const newWard: WardWithStats = {
+    id: nextWardNumber,
+    ward_number: nextWardNumber,
+    candidate_name: payload.candidate_name.trim(),
+    party,
+    allowance,
+    phone: payload.phone?.trim() || null,
+    expected_veg: payload.expected_veg ?? null,
+    expected_non_veg: payload.expected_non_veg ?? null,
+    food_confirmed: payload.food_confirmed ?? false,
+    admin_notes: payload.admin_notes?.trim() || null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    total_entered: 0,
+    remaining_allowance: allowance,
+    excess_count: 0,
+    guests: validGuests,
+    recent_batches: [],
+  };
+
+  globalState.wards.set(nextWardNumber, newWard);
+  return {
+    success: true,
+    ward: newWard,
+    message: `Special guest "${payload.candidate_name}" registered successfully with Pass #${nextWardNumber}.`,
+  };
+}
+
+/**
+ * Delete a special guest / VIP record (Wards >= 101 only)
+ */
+export async function deleteWardAdmin(
+  wardNumber: number,
+  adminUser: { id: string; name: string }
+): Promise<{ success: boolean; message: string }> {
+  if (wardNumber <= 76) {
+    return { success: false, message: 'Cannot delete standard corporator divisions (1-76).' };
+  }
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createAdminClient();
+      const { data: ward } = await supabase.from('wards').select('id, candidate_name').eq('ward_number', wardNumber).single();
+      if (!ward) return { success: false, message: `Pass #${wardNumber} not found.` };
+
+      const { error } = await supabase.from('wards').delete().eq('ward_number', wardNumber);
+      if (error) throw error;
+
+      try {
+        await supabase.from('audit_logs').insert({
+          action: 'delete_special_guest',
+          ward_id: ward.id,
+          performed_by: adminUser.id.startsWith('admin') ? '00000000-0000-0000-0000-000000000000' : adminUser.id,
+          old_data: { ward_number: wardNumber, candidate_name: ward.candidate_name },
+          new_data: null,
+          reason: `Admin deleted special guest #${wardNumber}`,
+        });
+      } catch {}
+
+      globalState.wards.delete(wardNumber);
+      return { success: true, message: `Guest #${wardNumber} removed successfully.` };
+    } catch (err) {
+      console.warn('Supabase delete error:', err);
+    }
+  }
+
+  globalState.wards.delete(wardNumber);
+  return { success: true, message: `Guest #${wardNumber} removed successfully.` };
+}
+
+/**
  * Calculate complete dashboard summary metrics
  */
 export function calculateDashboardSummary(allWards: WardWithStats[]): DashboardSummary {
@@ -606,9 +797,11 @@ export function calculateDashboardSummary(allWards: WardWithStats[]): DashboardS
   let expectedVegTotal = 0;
   let expectedNonVegTotal = 0;
   let wardsUnconfirmedFood = 0;
+  let dynamicTotalAllowance = 0;
 
   allWards.forEach((w) => {
     totalEntered += w.total_entered;
+    dynamicTotalAllowance += (w.allowance || 5);
 
     if (w.total_entered > 0) {
       wardsWithArrivals += 1;
@@ -636,7 +829,7 @@ export function calculateDashboardSummary(allWards: WardWithStats[]): DashboardS
 
   return {
     total_entered: totalEntered,
-    normal_total_allowance: 380, // 76 wards * 5
+    normal_total_allowance: dynamicTotalAllowance,
     wards_with_arrivals: wardsWithArrivals,
     wards_without_arrivals: wardsWithoutArrivals,
     wards_exceeding_allowance: wardsExceedingAllowance,

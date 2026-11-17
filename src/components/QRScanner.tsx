@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Camera, CameraOff, AlertCircle, RefreshCw, Search, X, ChevronRight } from 'lucide-react';
 import { parseWardQRCode } from '@/lib/qr/parser';
-import { WARDS_SEED_DATA } from '@/data/wardsSeed';
+import { WARDS_SEED_DATA, WardSeed } from '@/data/wardsSeed';
+import { WardWithStats } from '@/types/database';
 import { PartyBadge } from '@/components/PartyBadge';
 import {
   initOfflineStorage,
@@ -24,7 +25,7 @@ export function QRScanner({ onWardScanned, isPaused }: QRScannerProps) {
   const [scannedUrlError, setScannedUrlError] = useState<string | null>(null);
   const [manualSearchQuery, setManualSearchQuery] = useState<string>('');
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
-  const [wards, setWards] = useState<typeof WARDS_SEED_DATA>(WARDS_SEED_DATA);
+  const [wards, setWards] = useState<Array<WardWithStats | WardSeed>>(WARDS_SEED_DATA);
 
   // Sync latest live ward details (candidate names, updated phones)
   useEffect(() => {

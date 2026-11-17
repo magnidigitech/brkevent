@@ -255,6 +255,7 @@ export function WardEntryCard({
   const isOverAllowance = ward.total_entered > ward.allowance;
   const winningCorp = getWinningCorporator(ward.ward_number);
   const isWinner = isWinningWard(ward.ward_number);
+  const isSpecial = ward.ward_number >= 101 || ['VIP', 'SPECIAL', 'GUEST', 'ALLIANCE'].includes(ward.party);
 
   return (
     <div className="w-full max-w-lg flex flex-col gap-4">
@@ -294,11 +295,21 @@ export function WardEntryCard({
       {/* MAIN DIVISION INVITATION CARD */}
       <div className="bg-white rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.06)] border border-black/[0.06] overflow-hidden">
             {/* Non-winning warning notice if applicable */}
-            {!isWinner && (
+            {!isWinner && !isSpecial && (
               <div className="mx-5 sm:mx-6 mt-5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 flex items-start gap-2.5 text-xs">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <strong className="font-bold">Non-Winning Division:</strong> Division {ward.ward_number} is not among the 64 winning corporators invited to this grand felicitation event.
+                </div>
+              </div>
+            )}
+
+            {/* Special Guest Dignitary Banner */}
+            {isSpecial && (
+              <div className="mx-5 sm:mx-6 mt-5 p-3.5 rounded-2xl bg-purple-50 border border-purple-200/80 text-purple-900 flex items-start gap-2.5 text-xs">
+                <CheckCircle2 className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="font-bold">Special Dignitary Pass:</strong> Official registered pass for honored guest and accompanying entourage.
                 </div>
               </div>
             )}
@@ -312,7 +323,9 @@ export function WardEntryCard({
                       ? 'bg-[#FFF6CC] text-[#7A5B00] border-[#FFCC00]/40'
                       : ward.party === 'JSP'
                       ? 'bg-[#FFEBEA] text-[#D70015] border-[#FF3B30]/30'
-                      : 'bg-[#FFF1E5] text-[#C93400] border-[#FF9500]/30'
+                      : ward.party === 'BJP'
+                      ? 'bg-[#FFF1E5] text-[#C93400] border-[#FF9500]/30'
+                      : 'bg-purple-100 text-purple-800 border-purple-200'
                   }`}
                 >
                   {ward.ward_number}
@@ -320,7 +333,7 @@ export function WardEntryCard({
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-neutral-500 font-medium block">
-                      Official Invitation
+                      {isSpecial ? 'Special Dignitary Pass' : 'Official Invitation'}
                     </span>
                     {isWinner && (
                       <span className="inline-flex items-center px-1.5 py-0.2 rounded-md text-[9px] font-bold bg-amber-500/15 text-amber-800 border border-amber-500/30">
@@ -329,7 +342,7 @@ export function WardEntryCard({
                     )}
                   </div>
                   <h2 className="text-xl sm:text-2xl font-semibold text-neutral-900 tracking-tight leading-snug">
-                    Division {ward.ward_number}
+                    {isSpecial ? `Pass #${ward.ward_number}` : `Division ${ward.ward_number}`}
                   </h2>
                 </div>
               </div>
@@ -484,7 +497,7 @@ export function WardEntryCard({
             <div className="mt-3.5 flex items-center gap-2 text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200/80 px-3.5 py-2.5 rounded-xl">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>
-                Division has already exceeded the 5-person allowance by {ward.excess_count} people.
+                Pass has already exceeded the {ward.allowance}-person allowance by {ward.excess_count} people.
               </span>
             </div>
           )}
@@ -492,7 +505,7 @@ export function WardEntryCard({
           {isAtOrExceeded && !isOverAllowance && (
             <div className="mt-3.5 flex items-center gap-2 text-xs font-medium text-amber-900 bg-amber-50 border border-amber-200/80 px-3.5 py-2.5 rounded-xl">
               <UserCheck className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Division has reached its exact 5-person allowance.</span>
+              <span>Pass has reached its exact {ward.allowance}-person allowance.</span>
             </div>
           )}
         </div>

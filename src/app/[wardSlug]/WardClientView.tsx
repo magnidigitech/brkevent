@@ -6,6 +6,7 @@ import Link from 'next/link';
 import QRCode from 'qrcode';
 import { WARDS_SEED_DATA } from '@/data/wardsSeed';
 import { PartyBadge } from '@/components/PartyBadge';
+import { PartyAffiliation } from '@/types/database';
 import { Maximize2, X, QrCode } from 'lucide-react';
 
 interface WardClientViewProps {
@@ -25,7 +26,7 @@ export function WardClientView({
   const [candidateName, setCandidateName] = useState<string>(
     seedWard?.candidate_name || `Division ${wardNumber}`
   );
-  const [party, setParty] = useState<'TDP' | 'JSP' | 'BJP'>(seedWard?.party || 'TDP');
+  const [party, setParty] = useState<PartyAffiliation>(seedWard?.party || 'TDP');
   const [qrSvg, setQrSvg] = useState<string>('');
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
 

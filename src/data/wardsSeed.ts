@@ -1,7 +1,9 @@
+import { PartyAffiliation } from '@/types/database';
+
 export interface WardSeed {
   ward_number: number;
   candidate_name: string;
-  party: 'TDP' | 'JSP' | 'BJP';
+  party: PartyAffiliation;
   allowance: number;
   phone: string | null;
 }

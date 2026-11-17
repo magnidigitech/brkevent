@@ -1,6 +1,6 @@
 export type StaffRole = 'admin' | 'scanner';
 
-export type PartyAffiliation = 'TDP' | 'JSP' | 'BJP';
+export type PartyAffiliation = 'TDP' | 'JSP' | 'BJP' | 'VIP' | 'SPECIAL' | 'ALLIANCE' | 'GUEST' | 'OTHER';
 
 export interface UserProfile {
   id: string;
@@ -16,7 +16,7 @@ export interface WardRecord {
   ward_number: number;
   candidate_name: string;
   party: PartyAffiliation;
-  allowance: number; // Always 5
+  allowance: number;
   phone: string | null;
   expected_veg: number | null;
   expected_non_veg: number | null;
@@ -29,7 +29,7 @@ export interface WardRecord {
 export interface WardGuest {
   id: string;
   ward_id: number;
-  guest_number: number; // 1 to 4
+  guest_number: number;
   guest_name: string;
   created_at?: string;
   updated_at?: string;
