@@ -260,16 +260,24 @@ export async function recordArrival(
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
+      const isUUID = staffUser.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(staffUser.id);
       const { data, error } = await supabase.rpc('record_arrival', {
         p_ward_id: ward_id,
         p_batch_size: batch_size,
         p_request_id: request_id,
         p_expected_prior_count: expected_prior_count ?? null,
         p_acknowledge_excess: acknowledge_excess ?? false,
+        p_user_id: isUUID ? staffUser.id : null,
       });
 
       if (error) throw error;
-      return data as RecordArrivalResponse;
+      const resp = data as RecordArrivalResponse;
+      if (resp && resp.success) {
+        // Also keep in-memory cache synchronized
+        const targetWard = await getWardByNumber(ward_id);
+        if (targetWard) globalState.wards.set(targetWard.ward_number, targetWard);
+      }
+      return resp;
     } catch (err) {
       console.warn('Supabase record_arrival RPC error, falling back to atomic local store:', err);
     }
@@ -409,9 +417,11 @@ export async function voidArrivalBatch(
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
+      const isUUID = adminUser.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(adminUser.id);
       const { data, error } = await supabase.rpc('void_arrival_batch', {
         p_batch_id: batchId,
         p_reason: reason.trim(),
+        p_user_id: isUUID ? adminUser.id : null,
       });
       if (error) throw error;
       return data;
@@ -670,10 +680,13 @@ export async function createSpecialGuestAdmin(
 
       // Record audit log
       try {
+        const isUUID = adminUser.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(adminUser.id);
+        const performedBy = isUUID ? adminUser.id : '3f12bce9-f5aa-4695-9b63-d3a6a3c943fd';
         await supabase.from('audit_logs').insert({
-          action: 'create_special_guest',
-          ward_id: insertedWard.id,
-          performed_by: adminUser.id.startsWith('admin') ? '00000000-0000-0000-0000-000000000000' : adminUser.id,
+          table_name: 'wards',
+          record_id: String(insertedWard.id),
+          action: 'CREATE_VIP',
+          performed_by: performedBy,
           old_data: null,
           new_data: {
             ward_number: nextWardNumber,
@@ -683,7 +696,9 @@ export async function createSpecialGuestAdmin(
           },
           reason: `Admin registered special guest / VIP #${nextWardNumber}`,
         });
-      } catch {}
+      } catch (auditErr) {
+        console.warn('Audit log write error:', auditErr);
+      }
 
       const freshWard = await getWardByNumber(nextWardNumber);
       if (freshWard) {

@@ -70,7 +70,7 @@ export default function DashboardPage() {
   const [partyFilter, setPartyFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL'); // 'ALL' | 'ARRIVED' | 'NOT_ARRIVED' | 'OVER_ALLOWANCE'
   const [foodFilter, setFoodFilter] = useState<string>('ALL'); // 'ALL' | 'CONFIRMED' | 'UNCONFIRMED' | 'UNSET' | 'MISMATCH'
-  const [scopeFilter, setScopeFilter] = useState<'WINNERS' | 'SPECIAL' | 'ALL'>('WINNERS');
+  const [scopeFilter, setScopeFilter] = useState<'ALL' | 'WINNERS' | 'SPECIAL' | 'ALL_DIVISIONS'>('ALL');
 
   // Add Special Guest Modal State
   const [isAddSpecialGuestOpen, setIsAddSpecialGuestOpen] = useState<boolean>(false);
@@ -243,7 +243,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Active scope wards (Winning 64 vs Special Guests vs All)
+  // Active scope wards (All Attendees vs Winning 64 vs Special Guests vs Full 76)
   const activeScopeWards = useMemo(() => {
     if (scopeFilter === 'WINNERS') {
       return wards.filter((w) => WINNING_WARD_NUMBERS.has(w.ward_number));
@@ -251,7 +251,11 @@ export default function DashboardPage() {
     if (scopeFilter === 'SPECIAL') {
       return wards.filter((w) => w.ward_number >= 101 || ['VIP', 'SPECIAL', 'GUEST', 'ALLIANCE'].includes(w.party));
     }
-    return wards;
+    if (scopeFilter === 'ALL_DIVISIONS') {
+      return wards;
+    }
+    // Default 'ALL': All Confirmed Attendees (64 Winning Corporators + Registered Special Guests & VIPs)
+    return wards.filter((w) => WINNING_WARD_NUMBERS.has(w.ward_number) || w.ward_number >= 101 || ['VIP', 'SPECIAL', 'GUEST', 'ALLIANCE'].includes(w.party));
   }, [wards, scopeFilter]);
 
   // Recalculate summary metrics dynamically based on active scope
@@ -852,12 +856,13 @@ export default function DashboardPage() {
                 {/* Scope Filter */}
                 <select
                   value={scopeFilter}
-                  onChange={(e) => setScopeFilter(e.target.value as 'WINNERS' | 'SPECIAL' | 'ALL')}
+                  onChange={(e) => setScopeFilter(e.target.value as any)}
                   className="px-3.5 py-2 text-xs font-semibold border border-amber-300 rounded-xl bg-amber-50/80 text-amber-900 focus:border-amber-600 focus:outline-none transition-colors"
                 >
-                  <option value="WINNERS">Winning Corporators (64)</option>
-                  <option value="SPECIAL">Special Guests & VIPs</option>
-                  <option value="ALL">All Invitees & Divisions</option>
+                  <option value="ALL">All Confirmed Attendees (Corporators + VIPs)</option>
+                  <option value="WINNERS">Winning Corporators Only (64)</option>
+                  <option value="SPECIAL">Special Guests & VIPs Only</option>
+                  <option value="ALL_DIVISIONS">All 76 Municipal Divisions</option>
                 </select>
 
                 {/* Party Filter */}
@@ -1219,12 +1224,13 @@ export default function DashboardPage() {
                 {/* Scope Filter */}
                 <select
                   value={scopeFilter}
-                  onChange={(e) => setScopeFilter(e.target.value as 'WINNERS' | 'SPECIAL' | 'ALL')}
+                  onChange={(e) => setScopeFilter(e.target.value as any)}
                   className="px-3.5 py-2 text-xs font-semibold border border-amber-300 rounded-xl bg-amber-50/80 text-amber-900 focus:border-amber-600 focus:outline-none transition-colors"
                 >
-                  <option value="WINNERS">Winning Corporators (64)</option>
-                  <option value="SPECIAL">Special Guests & VIPs</option>
-                  <option value="ALL">All Invitees & Divisions</option>
+                  <option value="ALL">All Confirmed Attendees (Corporators + VIPs)</option>
+                  <option value="WINNERS">Winning Corporators Only (64)</option>
+                  <option value="SPECIAL">Special Guests & VIPs Only</option>
+                  <option value="ALL_DIVISIONS">All 76 Municipal Divisions</option>
                 </select>
 
                 {/* Party Filter */}
@@ -1753,6 +1759,7 @@ export default function DashboardPage() {
           onClose={() => setIsAddSpecialGuestOpen(false)}
           onCreated={(newWard) => {
             setIsAddSpecialGuestOpen(false);
+            setScopeFilter('ALL');
             setWards((prev) => [newWard, ...prev.filter((w) => w.ward_number !== newWard.ward_number)]);
             loadDashboardData();
           }}
